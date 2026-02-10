@@ -19,10 +19,8 @@ public class OrderEngineApplication {
 	}
 
 	@Bean
-	CommandLineRunner testOrderCreation() {
+	CommandLineRunner testOrderCreation(OrderService orderService) {
 		return args -> {
-
-			OrderService orderService = new OrderService();
 
 			CreateOrderItemRequest item1 = new CreateOrderItemRequest();
 			item1.setIngredientId(1L);
@@ -43,5 +41,6 @@ public class OrderEngineApplication {
 			System.out.println("Total prep time: " + order.getTotalPrepTime());
 		};
 	}
+
 }
 
