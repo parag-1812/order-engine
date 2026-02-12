@@ -5,10 +5,7 @@ import com.cloudkitchen.order_engine.dto.CreateOrderRequest;
 import com.cloudkitchen.order_engine.ingredient.IngredientEntity;
 import com.cloudkitchen.order_engine.inventory.InventoryEntity;
 import com.cloudkitchen.order_engine.kitchen.KitchenEntity;
-import com.cloudkitchen.order_engine.order.Order;
-import com.cloudkitchen.order_engine.order.OrderEntity;
-import com.cloudkitchen.order_engine.order.OrderItem;
-import com.cloudkitchen.order_engine.order.OrderStatus;
+import com.cloudkitchen.order_engine.order.*;
 import com.cloudkitchen.order_engine.repository.IngredientRepository;
 import com.cloudkitchen.order_engine.repository.InventoryRepository;
 import com.cloudkitchen.order_engine.repository.KitchenRepository;
@@ -86,6 +83,19 @@ public class OrderService {
                 order.getTotalPrice(),
                 order.getTotalPrepTime()
         );
+
+        order.getItems().forEach(domainItem -> {
+
+            OrderItemEntity itemEntity = new OrderItemEntity(
+                    domainItem.getIngredientId(),
+                    domainItem.getQuantity(),
+                    domainItem.getTotalPrice() / domainItem.getQuantity(),
+                    domainItem.getTotalPrepTime() / domainItem.getQuantity(),
+                    orderEntity
+            );
+
+            orderEntity.addItem(itemEntity);
+        });
 
         orderRepository.save(orderEntity);
 

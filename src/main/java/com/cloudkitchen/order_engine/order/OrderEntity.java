@@ -1,6 +1,8 @@
 package com.cloudkitchen.order_engine.order;
 
 import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "orders")
@@ -21,9 +23,10 @@ public class OrderEntity {
 
     private int totalPrepTime;
 
-    protected OrderEntity() {
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderItemEntity> items = new ArrayList<>();
 
-    }
+    protected OrderEntity() {}
 
     public OrderEntity(
             Long customerId,
@@ -39,19 +42,11 @@ public class OrderEntity {
         this.totalPrepTime = totalPrepTime;
     }
 
+    public void addItem(OrderItemEntity item) {
+        items.add(item);
+    }
+
     public Long getId() {
         return id;
-    }
-
-    public Long getCustomerId() {
-        return customerId;
-    }
-
-    public Long getKitchenId() {
-        return kitchenId;
-    }
-
-    public OrderStatus getStatus() {
-        return status;
     }
 }
