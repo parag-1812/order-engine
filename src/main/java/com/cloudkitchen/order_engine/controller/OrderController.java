@@ -1,6 +1,7 @@
 package com.cloudkitchen.order_engine.controller;
 
 import com.cloudkitchen.order_engine.dto.CreateOrderRequest;
+import com.cloudkitchen.order_engine.dto.OrderDetailsResponse;
 import com.cloudkitchen.order_engine.dto.OrderResponse;
 import com.cloudkitchen.order_engine.order.Order;
 import com.cloudkitchen.order_engine.service.OrderService;
@@ -33,5 +34,13 @@ public class OrderController {
         );
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{orderId}")
+    public ResponseEntity<OrderDetailsResponse> getOrder(@PathVariable Long orderId) {
+
+        var orderEntity = orderService.getOrderById(orderId);
+
+        return ResponseEntity.ok(orderEntity);
     }
 }

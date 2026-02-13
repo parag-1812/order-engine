@@ -49,4 +49,8 @@ public class OrderEntity {
     public Long getId() {
         return id;
     }
+
+    public List<OrderItemEntity> getItems() {
+        return items;
+    }
 }
