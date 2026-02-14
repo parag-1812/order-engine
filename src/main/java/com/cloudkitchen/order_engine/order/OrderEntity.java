@@ -49,6 +49,9 @@ public class OrderEntity {
         items.add(item);
     }
 
+    public void setStatus(OrderStatus status) {
+        this.status = status;
+    }
 
     public Long getId() {
         return id;

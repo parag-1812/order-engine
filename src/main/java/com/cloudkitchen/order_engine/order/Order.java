@@ -39,6 +39,18 @@ public class Order {
         this.status = newStatus;
     }
 
+    private boolean isValidTransition(OrderStatus current, OrderStatus next) {
+
+        return switch (current) {
+            case CREATED -> next == OrderStatus.VALIDATED;
+            case VALIDATED -> next == OrderStatus.KITCHEN_ASSIGNED;
+            case KITCHEN_ASSIGNED -> next == OrderStatus.COOKING;
+            case COOKING -> next == OrderStatus.READY;
+            case READY -> next == OrderStatus.DELIVERED;
+            default -> false;
+        };
+    }
+
     public void assignKitchen(Long kitchenId) {
         this.kitchenId = kitchenId;
         changeStatus(OrderStatus.KITCHEN_ASSIGNED);
@@ -77,4 +89,5 @@ public class Order {
     public List<OrderItem> getItems() {
         return items;
     }
+
 }

@@ -4,6 +4,7 @@ import com.cloudkitchen.order_engine.dto.CreateOrderRequest;
 import com.cloudkitchen.order_engine.dto.OrderDetailsResponse;
 import com.cloudkitchen.order_engine.dto.OrderResponse;
 import com.cloudkitchen.order_engine.order.Order;
+import com.cloudkitchen.order_engine.order.OrderStatus;
 import com.cloudkitchen.order_engine.service.OrderService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -59,5 +60,15 @@ public class OrderController {
     ) {
         return ResponseEntity.ok(orderService.getOrdersByKitchen(kitchenId));
     }
+
+    @PatchMapping("/{orderId}/status")
+    public ResponseEntity<String> updateStatus(
+            @PathVariable Long orderId,
+            @RequestParam OrderStatus status
+    ) {
+        orderService.updateOrderStatus(orderId, status);
+        return ResponseEntity.ok("Order status updated to " + status);
+    }
+
 
 }

@@ -186,6 +186,33 @@ public class OrderService {
                 .collect(java.util.stream.Collectors.toList());
     }
 
+    @Transactional
+    public void updateOrderStatus(Long orderId, OrderStatus newStatus) {
+
+        OrderEntity orderEntity = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+
+        OrderStatus currentStatus = orderEntity.getStatus();
+
+        if (!isValidTransition(currentStatus, newStatus)) {
+            throw new IllegalStateException(
+                    "Invalid status transition from " + currentStatus + " to " + newStatus
+            );
+        }
+
+        orderEntity.setStatus(newStatus);
+        orderRepository.save(orderEntity);
+    }
+
+    private boolean isValidTransition(OrderStatus current, OrderStatus next) {
+
+        return switch (current) {
+            case KITCHEN_ASSIGNED -> next == OrderStatus.COOKING;
+            case COOKING -> next == OrderStatus.READY;
+            case READY -> next == OrderStatus.DELIVERED;
+            default -> false;
+        };
+    }
 
     private KitchenEntity assignKitchen(Order order, boolean orderIsVegetarian) {
 
