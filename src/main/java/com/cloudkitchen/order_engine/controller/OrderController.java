@@ -53,4 +53,11 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getOrdersByCustomer(customerId));
     }
 
+    @GetMapping("/kitchen/{kitchenId}")
+    public ResponseEntity<List<OrderDetailsResponse>> getOrdersByKitchen(
+            @PathVariable Long kitchenId
+    ) {
+        return ResponseEntity.ok(orderService.getOrdersByKitchen(kitchenId));
+    }
+
 }
