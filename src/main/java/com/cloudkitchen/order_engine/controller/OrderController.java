@@ -8,6 +8,8 @@ import com.cloudkitchen.order_engine.service.OrderService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/orders")
 public class OrderController {
@@ -43,4 +45,12 @@ public class OrderController {
 
         return ResponseEntity.ok(orderEntity);
     }
+
+    @GetMapping("/customer/{customerId}")
+    public ResponseEntity<List<OrderDetailsResponse>> getOrdersByCustomer(
+            @PathVariable Long customerId
+    ) {
+        return ResponseEntity.ok(orderService.getOrdersByCustomer(customerId));
+    }
+
 }

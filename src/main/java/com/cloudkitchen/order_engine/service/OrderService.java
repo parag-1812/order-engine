@@ -124,6 +124,38 @@ public class OrderService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public List<OrderDetailsResponse> getOrdersByCustomer(Long customerId) {
+
+        List<OrderEntity> orders = orderRepository.findByCustomerId(customerId);
+
+        return orders.stream()
+                .map(orderEntity -> {
+
+                    List<OrderItemResponse> items = orderEntity.getItems()
+                            .stream()
+                            .map(item -> new OrderItemResponse(
+                                    item.getIngredientId(),
+                                    item.getQuantity(),
+                                    item.getPriceAtOrderTime(),
+                                    item.getPrepTimeAtOrderTime()
+                            ))
+                            .collect(java.util.stream.Collectors.toList());
+
+                    return new OrderDetailsResponse(
+                            orderEntity.getId(),
+                            orderEntity.getCustomerId(),
+                            orderEntity.getKitchenId(),
+                            orderEntity.getStatus().name(),
+                            orderEntity.getTotalPrice(),
+                            orderEntity.getTotalPrepTime(),
+                            items
+                    );
+                })
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+
     private KitchenEntity assignKitchen(Order order, boolean orderIsVegetarian) {
 
         List<KitchenEntity> kitchens = kitchenRepository.findAll();
