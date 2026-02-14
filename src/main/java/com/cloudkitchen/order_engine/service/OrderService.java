@@ -1,8 +1,6 @@
 package com.cloudkitchen.order_engine.service;
 
-import com.cloudkitchen.order_engine.dto.CreateOrderItemRequest;
-import com.cloudkitchen.order_engine.dto.CreateOrderRequest;
-import com.cloudkitchen.order_engine.dto.OrderDetailsResponse;
+import com.cloudkitchen.order_engine.dto.*;
 import com.cloudkitchen.order_engine.ingredient.IngredientEntity;
 import com.cloudkitchen.order_engine.inventory.InventoryEntity;
 import com.cloudkitchen.order_engine.kitchen.KitchenEntity;
@@ -22,7 +20,6 @@ public class OrderService {
     private final IngredientRepository ingredientRepository;
     private final KitchenRepository kitchenRepository;
     private final InventoryRepository inventoryRepository;
-
     private final OrderRepository orderRepository;
 
     public OrderService(
@@ -37,14 +34,12 @@ public class OrderService {
         this.orderRepository = orderRepository;
     }
 
-
     @Transactional
     public Order createOrder(Long customerId, CreateOrderRequest request) {
 
         validateRequest(request);
 
         Order order = new Order(customerId);
-
         boolean orderIsVegetarian = true;
 
         for (CreateOrderItemRequest itemRequest : request.getItems()) {
@@ -74,7 +69,6 @@ public class OrderService {
         order.changeStatus(OrderStatus.VALIDATED);
 
         KitchenEntity assignedKitchen = assignKitchen(order, orderIsVegetarian);
-
         order.assignKitchen(assignedKitchen.getId());
 
         OrderEntity orderEntity = new OrderEntity(
@@ -100,10 +94,35 @@ public class OrderService {
 
         orderRepository.save(orderEntity);
 
-
         return order;
     }
 
+    @Transactional(readOnly = true)
+    public OrderDetailsResponse getOrderById(Long orderId) {
+
+        OrderEntity orderEntity = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+
+        List<OrderItemResponse> itemResponses = orderEntity.getItems()
+                .stream()
+                .map(item -> new OrderItemResponse(
+                        item.getIngredientId(),
+                        item.getQuantity(),
+                        item.getPriceAtOrderTime(),
+                        item.getPrepTimeAtOrderTime()
+                ))
+                .toList();
+
+        return new OrderDetailsResponse(
+                orderEntity.getId(),
+                orderEntity.getCustomerId(),
+                orderEntity.getKitchenId(),
+                orderEntity.getStatus().name(),
+                orderEntity.getTotalPrice(),
+                orderEntity.getTotalPrepTime(),
+                itemResponses
+        );
+    }
 
     private KitchenEntity assignKitchen(Order order, boolean orderIsVegetarian) {
 
@@ -179,6 +198,4 @@ public class OrderService {
             }
         });
     }
-
-
 }

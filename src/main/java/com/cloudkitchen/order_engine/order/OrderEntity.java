@@ -26,7 +26,9 @@ public class OrderEntity {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItemEntity> items = new ArrayList<>();
 
-    protected OrderEntity() {}
+    protected OrderEntity() {
+
+    }
 
     public OrderEntity(
             Long customerId,
@@ -42,12 +44,34 @@ public class OrderEntity {
         this.totalPrepTime = totalPrepTime;
     }
 
+
     public void addItem(OrderItemEntity item) {
         items.add(item);
     }
 
+
     public Long getId() {
         return id;
+    }
+
+    public Long getCustomerId() {
+        return customerId;
+    }
+
+    public Long getKitchenId() {
+        return kitchenId;
+    }
+
+    public OrderStatus getStatus() {
+        return status;
+    }
+
+    public double getTotalPrice() {
+        return totalPrice;
+    }
+
+    public int getTotalPrepTime() {
+        return totalPrepTime;
     }
 
     public List<OrderItemEntity> getItems() {

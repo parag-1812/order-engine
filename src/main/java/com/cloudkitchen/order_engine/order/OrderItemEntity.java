@@ -39,4 +39,28 @@ public class OrderItemEntity {
         this.prepTimeAtOrderTime = prepTimeAtOrderTime;
         this.order = order;
     }
+
+    public Long getId() {
+        return id;
+    }
+
+    public Long getIngredientId() {
+        return ingredientId;
+    }
+
+    public int getQuantity() {
+        return quantity;
+    }
+
+    public double getPriceAtOrderTime() {
+        return priceAtOrderTime;
+    }
+
+    public int getPrepTimeAtOrderTime() {
+        return prepTimeAtOrderTime;
+    }
+
+    public OrderEntity getOrder() {
+        return order;
+    }
 }
