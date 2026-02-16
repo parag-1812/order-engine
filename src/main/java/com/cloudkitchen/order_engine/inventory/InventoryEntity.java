@@ -3,6 +3,7 @@ package com.cloudkitchen.order_engine.inventory;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 @Entity
 @Table(name = "inventory")
@@ -15,8 +16,10 @@ public class InventoryEntity {
     private Long ingredientId;
     private int availableQuantity;
 
-    protected InventoryEntity() {
+    @Version
+    private Long version;
 
+    protected InventoryEntity() {
     }
 
     public InventoryEntity(Long id, Long kitchenId, Long ingredientId, int availableQuantity) {
