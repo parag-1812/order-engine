@@ -204,6 +204,42 @@ public class OrderService {
         orderRepository.save(orderEntity);
     }
 
+    @Transactional
+    public void cancelOrder(Long orderId) {
+
+        OrderEntity orderEntity = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+
+        OrderStatus currentStatus = orderEntity.getStatus();
+
+        if (currentStatus == OrderStatus.COOKING ||
+                currentStatus == OrderStatus.READY ||
+                currentStatus == OrderStatus.DELIVERED) {
+
+            throw new IllegalStateException("Order cannot be cancelled at this stage");
+        }
+
+        Long kitchenId = orderEntity.getKitchenId();
+
+        List<InventoryEntity> inventoryList =
+                inventoryRepository.findByKitchenId(kitchenId);
+
+        for (OrderItemEntity item : orderEntity.getItems()) {
+
+            InventoryEntity inventory = inventoryList.stream()
+                    .filter(i -> i.getIngredientId().equals(item.getIngredientId()))
+                    .findFirst()
+                    .orElseThrow();
+
+            inventory.increaseQuantity(item.getQuantity());
+            inventoryRepository.save(inventory);
+        }
+
+        orderEntity.setStatus(OrderStatus.CANCELLED);
+        orderRepository.save(orderEntity);
+    }
+
+
     private boolean isValidTransition(OrderStatus current, OrderStatus next) {
 
         return switch (current) {

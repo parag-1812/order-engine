@@ -70,5 +70,10 @@ public class OrderController {
         return ResponseEntity.ok("Order status updated to " + status);
     }
 
+    @PatchMapping("/{orderId}/cancel")
+    public ResponseEntity<String> cancelOrder(@PathVariable Long orderId) {
+        orderService.cancelOrder(orderId);
+        return ResponseEntity.ok("Order cancelled successfully");
+    }
 
 }

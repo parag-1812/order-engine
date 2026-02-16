@@ -44,4 +44,8 @@ public class InventoryEntity {
         }
         this.availableQuantity -= quantity;
     }
+
+    public void increaseQuantity(int quantity) {
+        this.availableQuantity += quantity;
+    }
 }
