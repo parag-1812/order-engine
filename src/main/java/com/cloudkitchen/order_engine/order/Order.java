@@ -29,15 +29,42 @@ public class Order {
 
     public void changeStatus(OrderStatus newStatus) {
 
-        if (!OrderLifecycle.isTransitionAllowed(this.status, newStatus)) {
-            throw new IllegalStateException(
-                    "Invalid order status transition from "
-                            + this.status + " to " + newStatus
-            );
+        if (this.status == OrderStatus.DELIVERED) {
+            throw new IllegalStateException("Delivered order cannot be modified");
+        }
+
+        switch (this.status) {
+
+            case VALIDATED -> {
+                if (newStatus != OrderStatus.KITCHEN_ASSIGNED) {
+                    throw new IllegalStateException("Invalid transition from VALIDATED");
+                }
+            }
+
+            case KITCHEN_ASSIGNED -> {
+                if (newStatus != OrderStatus.COOKING) {
+                    throw new IllegalStateException("Invalid transition from KITCHEN_ASSIGNED");
+                }
+            }
+
+            case COOKING -> {
+                if (newStatus != OrderStatus.READY) {
+                    throw new IllegalStateException("Invalid transition from COOKING");
+                }
+            }
+
+            case READY -> {
+                if (newStatus != OrderStatus.DELIVERED) {
+                    throw new IllegalStateException("Invalid transition from READY");
+                }
+            }
+
+            default -> throw new IllegalStateException("Invalid state transition");
         }
 
         this.status = newStatus;
     }
+
 
     private boolean isValidTransition(OrderStatus current, OrderStatus next) {
 
