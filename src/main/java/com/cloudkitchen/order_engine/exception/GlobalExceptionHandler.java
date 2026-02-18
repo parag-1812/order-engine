@@ -28,12 +28,16 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGeneric(
-            Exception ex
-    ) {
-        ErrorResponse error =
-                new ErrorResponse("Something went wrong", HttpStatus.INTERNAL_SERVER_ERROR.value());
+    public ResponseEntity<ErrorResponse> handleGeneric(Exception ex) {
 
-        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+        ex.printStackTrace();
+
+        ErrorResponse error =
+                new ErrorResponse(ex.getMessage(),
+                        HttpStatus.INTERNAL_SERVER_ERROR.value());
+
+        return new ResponseEntity<>(error,
+                HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
 }
