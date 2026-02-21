@@ -1,72 +1,184 @@
-import { useState } from "react";
-import axios from "axios";
+import { useMemo, useState } from "react";
+import {
+  createOrder,
+  getApiErrorMessage,
+  ORDER_STATUS,
+} from "../api/ordersApi";
+import { getIngredientMeta, MENU_CATALOG } from "../constants/menuCatalog";
 
-function CreateOrder() {
-  const [items, setItems] = useState([{ ingredientId: "", quantity: "" }]);
-  const [response, setResponse] = useState(null);
+function emptyItem() {
+  return { ingredientId: "", quantity: 1 };
+}
 
-  const customerId = 101;
+function CreateOrder({ customerId, onOrderCreated }) {
+  const [items, setItems] = useState([emptyItem()]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [createdSummary, setCreatedSummary] = useState(null);
 
-  const handleChange = (index, field, value) => {
-    const updated = [...items];
-    updated[index][field] = value;
-    setItems(updated);
-  };
+  const estimatedAmount = useMemo(() => {
+    return items.reduce((sum, item) => {
+      const ingredientId = Number(item.ingredientId);
+      const quantity = Number(item.quantity);
+      const ingredient = getIngredientMeta(ingredientId);
+      if (!ingredient || !Number.isFinite(quantity) || quantity <= 0) {
+        return sum;
+      }
+      return sum + ingredient.price * quantity;
+    }, 0);
+  }, [items]);
 
-  const addItem = () => {
-    setItems([...items, { ingredientId: "", quantity: "" }]);
-  };
+  function updateItem(index, key, value) {
+    setItems((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, [key]: value } : item))
+    );
+  }
 
-  const submitOrder = async () => {
-    try {
-      const res = await axios.post(
-        `http://localhost:8080/orders?customerId=${customerId}`,
-        { items }
-      );
-      setResponse(res.data);
-    } catch (error) {
-      setResponse(error.response?.data || { message: "Error occurred" });
+  function removeItem(index) {
+    setItems((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function addItem() {
+    setItems((prev) => [...prev, emptyItem()]);
+  }
+
+  function validateItems() {
+    if (!Number.isInteger(customerId) || customerId <= 0) {
+      return "Please enter a valid customer ID.";
     }
-  };
+    if (!items.length) {
+      return "Add at least one item.";
+    }
+    const hasInvalid = items.some((item) => {
+      const ingredientId = Number(item.ingredientId);
+      const quantity = Number(item.quantity);
+      return (
+        !Number.isInteger(ingredientId) ||
+        ingredientId <= 0 ||
+        !Number.isInteger(quantity) ||
+        quantity <= 0
+      );
+    });
+    if (hasInvalid) {
+      return "Ingredient ID and quantity must be positive whole numbers.";
+    }
+    return "";
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setSubmitError("");
+    const validationError = validateItems();
+    if (validationError) {
+      setSubmitError(validationError);
+      return;
+    }
+
+    const normalizedItems = items.map((item) => ({
+      ingredientId: Number(item.ingredientId),
+      quantity: Number(item.quantity),
+    }));
+
+    setIsSubmitting(true);
+    try {
+      const result = await createOrder(customerId, normalizedItems);
+      setCreatedSummary(result);
+      setItems([emptyItem()]);
+      onOrderCreated();
+    } catch (error) {
+      setSubmitError(getApiErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
-    <div style={{ marginBottom: "30px" }}>
-      <h3>Create Order</h3>
+    <section className="panel">
+      <div className="panel-header">
+        <h2>Create Order</h2>
+      </div>
 
-      {items.map((item, index) => (
-        <div key={index} style={{ marginBottom: "10px" }}>
-          <input
-            type="number"
-            placeholder="Ingredient ID"
-            value={item.ingredientId}
-            onChange={(e) =>
-              handleChange(index, "ingredientId", Number(e.target.value))
-            }
-          />
-          <input
-            type="number"
-            placeholder="Quantity"
-            value={item.quantity}
-            onChange={(e) =>
-              handleChange(index, "quantity", Number(e.target.value))
-            }
-            style={{ marginLeft: "10px" }}
-          />
+      <form onSubmit={handleSubmit}>
+        <div className="hint-box">
+          <p>Available ingredients (from `data.sql` seed):</p>
+          <div className="catalog-row">
+            {MENU_CATALOG.map((ingredient) => (
+              <span className="pill" key={ingredient.ingredientId}>
+                #{ingredient.ingredientId} {ingredient.name}
+              </span>
+            ))}
+          </div>
         </div>
-      ))}
 
-      <button onClick={addItem}>Add Item</button>
-      <button onClick={submitOrder} style={{ marginLeft: "10px" }}>
-        Submit Order
-      </button>
-
-      {response && (
-        <div style={{ marginTop: "20px" }}>
-          <h4>Response:</h4>
-          <pre>{JSON.stringify(response, null, 2)}</pre>
+        <div className="form-grid">
+          {items.map((item, index) => (
+            <div className="item-row" key={`item-${index}`}>
+              <div className="field">
+                <label htmlFor={`ingredient-${index}`}>Ingredient ID</label>
+                <input
+                  id={`ingredient-${index}`}
+                  type="number"
+                  min="1"
+                  value={item.ingredientId}
+                  onChange={(event) =>
+                    updateItem(index, "ingredientId", event.target.value)
+                  }
+                  placeholder="e.g. 1"
+                />
+              </div>
+              <div className="field">
+                <label htmlFor={`quantity-${index}`}>Quantity</label>
+                <input
+                  id={`quantity-${index}`}
+                  type="number"
+                  min="1"
+                  value={item.quantity}
+                  onChange={(event) =>
+                    updateItem(index, "quantity", event.target.value)
+                  }
+                  placeholder="e.g. 2"
+                />
+              </div>
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={() => removeItem(index)}
+                disabled={items.length === 1}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
         </div>
-      )}
-    </div>
+
+        <div className="action-row">
+          <button type="button" className="btn secondary" onClick={addItem}>
+            Add Item
+          </button>
+          <button type="submit" className="btn primary" disabled={isSubmitting}>
+            {isSubmitting ? "Submitting..." : "Submit Order"}
+          </button>
+        </div>
+      </form>
+
+      <p className="meta-line">
+        Estimated amount: <strong>Rs. {estimatedAmount.toFixed(2)}</strong>
+      </p>
+
+      {submitError ? <p className="error-text">{submitError}</p> : null}
+      {createdSummary ? (
+        <div className="success-box">
+          <p>Order created and assigned to kitchen #{createdSummary.kitchenId}.</p>
+          <p>
+            Status: <strong>{createdSummary.status || ORDER_STATUS.CREATED}</strong>
+          </p>
+          <p>
+            Total: Rs. {createdSummary.totalPrice} | Prep time:{" "}
+            {createdSummary.totalPrepTime} min
+          </p>
+        </div>
+      ) : null}
+    </section>
   );
 }
 

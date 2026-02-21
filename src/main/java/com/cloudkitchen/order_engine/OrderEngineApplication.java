@@ -6,10 +6,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import java.util.List;
 
 @SpringBootApplication
-public class npmOrderEngineApplication {
+public class OrderEngineApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(OrderEngineApplication.class, args);
 	}
 }
-

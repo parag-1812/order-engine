@@ -29,11 +29,13 @@ public class Order {
 
     public void changeStatus(OrderStatus newStatus) {
 
-        if (this.status == OrderStatus.DELIVERED) {
-            throw new IllegalStateException("Delivered order cannot be modified");
-        }
-
         switch (this.status) {
+
+            case CREATED -> {
+                if (newStatus != OrderStatus.VALIDATED) {
+                    throw new IllegalStateException("Invalid transition from CREATED");
+                }
+            }
 
             case VALIDATED -> {
                 if (newStatus != OrderStatus.KITCHEN_ASSIGNED) {
@@ -57,6 +59,10 @@ public class Order {
                 if (newStatus != OrderStatus.DELIVERED) {
                     throw new IllegalStateException("Invalid transition from READY");
                 }
+            }
+
+            case DELIVERED -> {
+                throw new IllegalStateException("Delivered order cannot be modified");
             }
 
             default -> throw new IllegalStateException("Invalid state transition");
