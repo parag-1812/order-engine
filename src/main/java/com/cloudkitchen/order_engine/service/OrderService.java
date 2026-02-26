@@ -324,4 +324,22 @@ public class OrderService {
             }
         });
     }
+
+    public List<OrderDetailsResponse> getAllOrders() {
+        return orderRepository.findAll()
+                .stream()
+                .map(this::mapToDetailsResponse)
+                .toList();
+    }
+
+    public double getTotalRevenue() {
+        return orderRepository.findAll()
+                .stream()
+                .mapToDouble(OrderEntity::getTotalPrice)
+                .sum();
+    }
+
+    public long getOrderCount() {
+        return orderRepository.count();
+    }
 }

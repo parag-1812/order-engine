@@ -5,6 +5,16 @@ const api = axios.create({
   timeout: 10000,
 });
 
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return config;
+});
+
 export const ORDER_STATUS = {
   CREATED: "CREATED",
   VALIDATED: "VALIDATED",
@@ -15,14 +25,14 @@ export const ORDER_STATUS = {
   CANCELLED: "CANCELLED",
 };
 
-export async function createOrder(customerId, items) {
+export async function createOrder(items) {
   const payload = { items };
-  const response = await api.post(`/orders?customerId=${customerId}`, payload);
+  const response = await api.post(`/orders`, payload);
   return response.data;
 }
 
-export async function getCustomerOrders(customerId) {
-  const response = await api.get(`/orders/customer/${customerId}`);
+export async function getCustomerOrders() {
+  const response = await api.get(`/orders/customer`);
   return response.data;
 }
 

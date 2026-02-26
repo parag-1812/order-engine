@@ -1,6 +1,8 @@
-import { Link, Route, Routes, useLocation } from "react-router-dom";
+import { Link, Route, Routes, useLocation, Navigate, useNavigate } from "react-router-dom";
 import CustomerPage from "./pages/CustomerPage";
 import KitchenPage from "./pages/KitchenPage";
+import LoginPage from "./pages/LoginPage";
+import ProtectedRoute from "./components/ProtectedRoute";
 import "./App.css";
 
 function NavLink({ to, children }) {
@@ -15,7 +17,16 @@ function NavLink({ to, children }) {
   );
 }
 
-function App() {
+function AppLayout({ children }) {
+  const navigate = useNavigate();
+  const role = localStorage.getItem("role");
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    navigate("/login");
+  };
+
   return (
     <div className="app-layout">
       <header className="topbar">
@@ -23,9 +34,13 @@ function App() {
           <p className="kicker">Order Engine</p>
           <h1>Cloud Kitchen Control Center</h1>
         </div>
+
         <nav className="nav-tabs">
-          <NavLink to="/">Customer</NavLink>
-          <NavLink to="/kitchen">Kitchen</NavLink>
+          {role === "USER" && <NavLink to="/">Customer</NavLink>}
+          {role === "KITCHEN" && <NavLink to="/kitchen">Kitchen</NavLink>}
+          <button onClick={handleLogout} className="logout-btn">
+            Logout
+          </button>
         </nav>
       </header>
 
@@ -33,15 +48,51 @@ function App() {
         <p className="intro">
           Create, track, and process orders using your Spring backend APIs.
         </p>
-        <Routes>
-          <Route path="/" element={<CustomerPage />} />
-          <Route path="/kitchen" element={<KitchenPage />} />
-        </Routes>
+        {children}
       </main>
+
       <footer className="footer-note">
-        Frontend connected to <code>/orders</code> endpoints.
+        Frontend secured with JWT authentication.
       </footer>
     </div>
+  );
+}
+
+function App() {
+  const token = localStorage.getItem("token");
+
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute allowedRole="USER">
+            <AppLayout>
+              <CustomerPage />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/kitchen"
+        element={
+          <ProtectedRoute allowedRole="KITCHEN">
+            <AppLayout>
+              <KitchenPage />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Redirect unknown routes */}
+      <Route
+        path="*"
+        element={token ? <Navigate to="/" /> : <Navigate to="/login" />}
+      />
+    </Routes>
   );
 }
 
