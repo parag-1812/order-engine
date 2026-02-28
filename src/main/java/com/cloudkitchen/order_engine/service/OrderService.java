@@ -325,6 +325,28 @@ public class OrderService {
         });
     }
 
+    private OrderDetailsResponse mapToDetailsResponse(OrderEntity orderEntity) {
+
+        var itemResponses = orderEntity.getItems().stream()
+                .map(item -> new OrderItemResponse(
+                        item.getIngredientId(),
+                        item.getQuantity(),
+                        item.getPriceAtOrderTime(),
+                        item.getPrepTimeAtOrderTime()
+                ))
+                .toList();
+
+        return new OrderDetailsResponse(
+                orderEntity.getId(),
+                orderEntity.getCustomerId(),
+                orderEntity.getKitchenId(),
+                orderEntity.getStatus().name(),
+                orderEntity.getTotalPrice(),
+                orderEntity.getTotalPrepTime(),
+                itemResponses
+        );
+    }
+
     public List<OrderDetailsResponse> getAllOrders() {
         return orderRepository.findAll()
                 .stream()

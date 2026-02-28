@@ -19,25 +19,16 @@ public class AdminController {
         this.orderService = orderService;
     }
 
-    // ===============================
-    // Get All Orders
-    // ===============================
     @GetMapping("/orders")
     public List<OrderDetailsResponse> getAllOrders() {
         return orderService.getAllOrders();
     }
 
-    // ===============================
-    // Get Revenue Summary
-    // ===============================
     @GetMapping("/revenue")
     public double getTotalRevenue() {
         return orderService.getTotalRevenue();
     }
 
-    // ===============================
-    // Get Order Count
-    // ===============================
     @GetMapping("/orders/count")
     public long getOrderCount() {
         return orderService.getOrderCount();
