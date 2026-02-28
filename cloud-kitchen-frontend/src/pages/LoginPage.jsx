@@ -25,6 +25,8 @@ function LoginPage() {
         navigate("/");
       } else if (payload.role === "KITCHEN") {
         navigate("/kitchen");
+      } else if (payload.role === "ADMIN") {
+         navigate("/admin");
       }
 
     } catch (err) {
