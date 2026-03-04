@@ -22,17 +22,7 @@ public class OrderService {
     private final InventoryRepository inventoryRepository;
     private final OrderRepository orderRepository;
 
-    public OrderService(
-            IngredientRepository ingredientRepository,
-            KitchenRepository kitchenRepository,
-            InventoryRepository inventoryRepository,
-            OrderRepository orderRepository
-    ) {
-        this.ingredientRepository = ingredientRepository;
-        this.kitchenRepository = kitchenRepository;
-        this.inventoryRepository = inventoryRepository;
-        this.orderRepository = orderRepository;
-    }
+
 
     @Transactional
     public Order createOrder(Long customerId, CreateOrderRequest request) {
