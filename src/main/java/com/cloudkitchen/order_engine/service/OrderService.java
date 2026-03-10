@@ -347,6 +347,7 @@ public class OrderService {
         );
     }
 
+    @Transactional(readOnly = true)
     public List<OrderDetailsResponse> getAllOrders() {
         return orderRepository.findAll()
                 .stream()
