@@ -1,5 +1,6 @@
 package com.cloudkitchen.order_engine.controller;
 
+import com.cloudkitchen.order_engine.dto.OrderDetailsResponse;
 import com.cloudkitchen.order_engine.ingredient.IngredientEntity;
 import com.cloudkitchen.order_engine.inventory.InventoryEntity;
 import com.cloudkitchen.order_engine.kitchen.KitchenEntity;
@@ -8,6 +9,7 @@ import com.cloudkitchen.order_engine.repository.IngredientRepository;
 import com.cloudkitchen.order_engine.repository.InventoryRepository;
 import com.cloudkitchen.order_engine.repository.KitchenRepository;
 import com.cloudkitchen.order_engine.repository.OrderRepository;
+import com.cloudkitchen.order_engine.service.OrderService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,16 +27,18 @@ public class AdminController {
     private final KitchenRepository kitchenRepository;
     private final InventoryRepository inventoryRepository;
     private final OrderRepository orderRepository;
+    private final OrderService orderService;
 
     public AdminController(
             IngredientRepository ingredientRepository,
             KitchenRepository kitchenRepository,
-            InventoryRepository inventoryRepository, OrderRepository orderRepository
+            InventoryRepository inventoryRepository, OrderRepository orderRepository , OrderService orderService
     ) {
         this.ingredientRepository = ingredientRepository;
         this.kitchenRepository = kitchenRepository;
         this.inventoryRepository = inventoryRepository;
         this.orderRepository = orderRepository;
+        this.orderService = orderService;
     }
 
     @PostMapping("/ingredients")
@@ -71,9 +75,10 @@ public class AdminController {
     public List<InventoryEntity> getInventory() {
         return inventoryRepository.findAll();
     }
+
     @GetMapping("/orders")
-    public List<OrderEntity> getAllOrders() {
-        return orderRepository.findAll();
+    public List<OrderDetailsResponse> getAllOrders() {
+        return orderService.getAllOrders();
     }
 
     @GetMapping("/stats")
