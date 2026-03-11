@@ -81,19 +81,5 @@ public class AdminController {
         return orderService.getAllOrders();
     }
 
-    @GetMapping("/stats")
-    public Map<String, Object> getStats() {
 
-        Map<String, Object> stats = new HashMap<>();
-
-        stats.put("totalOrders", orderRepository.count());
-        stats.put("totalRevenue",
-                orderRepository.findAll()
-                        .stream()
-                        .mapToDouble(OrderEntity::getTotalPrice)
-                        .sum()
-        );
-
-        return stats;
-    }
 }
