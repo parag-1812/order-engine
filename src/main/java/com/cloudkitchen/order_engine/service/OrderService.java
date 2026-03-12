@@ -26,8 +26,7 @@ public class OrderService {
             IngredientRepository ingredientRepository,
             KitchenRepository kitchenRepository,
             InventoryRepository inventoryRepository,
-            OrderRepository orderRepository
-    ) {
+            OrderRepository orderRepository) {
         this.ingredientRepository = ingredientRepository;
         this.kitchenRepository = kitchenRepository;
         this.inventoryRepository = inventoryRepository;
@@ -46,11 +45,8 @@ public class OrderService {
 
             IngredientEntity ingredient = ingredientRepository
                     .findById(itemRequest.getIngredientId())
-                    .orElseThrow(() ->
-                            new IllegalArgumentException(
-                                    "Ingredient not found: " + itemRequest.getIngredientId()
-                            )
-                    );
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Ingredient not found: " + itemRequest.getIngredientId()));
 
             if (!ingredient.isVegetarian()) {
                 orderIsVegetarian = false;
@@ -60,8 +56,7 @@ public class OrderService {
                     ingredient.getId(),
                     itemRequest.getQuantity(),
                     ingredient.getPrice(),
-                    ingredient.getPrepTimeInMinutes()
-            );
+                    ingredient.getPrepTimeInMinutes());
 
             order.addItem(orderItem);
         }
@@ -76,8 +71,7 @@ public class OrderService {
                 order.getKitchenId(),
                 order.getStatus(),
                 order.getTotalPrice(),
-                order.getTotalPrepTime()
-        );
+                order.getTotalPrepTime());
 
         order.getItems().forEach(domainItem -> {
 
@@ -86,8 +80,7 @@ public class OrderService {
                     domainItem.getQuantity(),
                     domainItem.getTotalPrice() / domainItem.getQuantity(),
                     domainItem.getTotalPrepTime() / domainItem.getQuantity(),
-                    orderEntity
-            );
+                    orderEntity);
 
             orderEntity.addItem(itemEntity);
         });
@@ -109,8 +102,7 @@ public class OrderService {
                         item.getIngredientId(),
                         item.getQuantity(),
                         item.getPriceAtOrderTime(),
-                        item.getPrepTimeAtOrderTime()
-                ))
+                        item.getPrepTimeAtOrderTime()))
                 .toList();
 
         return new OrderDetailsResponse(
@@ -120,8 +112,7 @@ public class OrderService {
                 orderEntity.getStatus().name(),
                 orderEntity.getTotalPrice(),
                 orderEntity.getTotalPrepTime(),
-                itemResponses
-        );
+                itemResponses);
     }
 
     @Transactional(readOnly = true)
@@ -138,8 +129,7 @@ public class OrderService {
                                     item.getIngredientId(),
                                     item.getQuantity(),
                                     item.getPriceAtOrderTime(),
-                                    item.getPrepTimeAtOrderTime()
-                            ))
+                                    item.getPrepTimeAtOrderTime()))
                             .collect(java.util.stream.Collectors.toList());
 
                     return new OrderDetailsResponse(
@@ -149,8 +139,7 @@ public class OrderService {
                             orderEntity.getStatus().name(),
                             orderEntity.getTotalPrice(),
                             orderEntity.getTotalPrepTime(),
-                            items
-                    );
+                            items);
                 })
                 .collect(java.util.stream.Collectors.toList());
     }
@@ -169,8 +158,7 @@ public class OrderService {
                                     item.getIngredientId(),
                                     item.getQuantity(),
                                     item.getPriceAtOrderTime(),
-                                    item.getPrepTimeAtOrderTime()
-                            ))
+                                    item.getPrepTimeAtOrderTime()))
                             .collect(java.util.stream.Collectors.toList());
 
                     return new OrderDetailsResponse(
@@ -180,8 +168,7 @@ public class OrderService {
                             orderEntity.getStatus().name(),
                             orderEntity.getTotalPrice(),
                             orderEntity.getTotalPrepTime(),
-                            items
-                    );
+                            items);
                 })
                 .collect(java.util.stream.Collectors.toList());
     }
@@ -196,8 +183,7 @@ public class OrderService {
 
         if (!isValidTransition(currentStatus, newStatus)) {
             throw new IllegalStateException(
-                    "Invalid status transition from " + currentStatus + " to " + newStatus
-            );
+                    "Invalid status transition from " + currentStatus + " to " + newStatus);
         }
 
         orderEntity.setStatus(newStatus);
@@ -221,8 +207,7 @@ public class OrderService {
 
         Long kitchenId = orderEntity.getKitchenId();
 
-        List<InventoryEntity> inventoryList =
-                inventoryRepository.findByKitchenId(kitchenId);
+        List<InventoryEntity> inventoryList = inventoryRepository.findByKitchenId(kitchenId);
 
         for (OrderItemEntity item : orderEntity.getItems()) {
 
@@ -238,7 +223,6 @@ public class OrderService {
         orderEntity.setStatus(OrderStatus.CANCELLED);
         orderRepository.save(orderEntity);
     }
-
 
     private boolean isValidTransition(OrderStatus current, OrderStatus next) {
 
@@ -278,8 +262,7 @@ public class OrderService {
 
     private boolean hasSufficientInventory(KitchenEntity kitchen, Order order) {
 
-        List<InventoryEntity> inventoryList =
-                inventoryRepository.findByKitchenId(kitchen.getId());
+        List<InventoryEntity> inventoryList = inventoryRepository.findByKitchenId(kitchen.getId());
 
         for (OrderItem item : order.getItems()) {
 
@@ -298,8 +281,7 @@ public class OrderService {
 
     private void reserveInventory(KitchenEntity kitchen, Order order) {
 
-        List<InventoryEntity> inventoryList =
-                inventoryRepository.findByKitchenId(kitchen.getId());
+        List<InventoryEntity> inventoryList = inventoryRepository.findByKitchenId(kitchen.getId());
 
         for (OrderItem item : order.getItems()) {
 
@@ -313,56 +295,4 @@ public class OrderService {
         }
     }
 
-    private void validateRequest(CreateOrderRequest request) {
-        if (request == null || request.getItems() == null || request.getItems().isEmpty()) {
-            throw new IllegalArgumentException("Order must contain at least one item");
-        }
-
-        request.getItems().forEach(item -> {
-            if (item.getQuantity() <= 0) {
-                throw new IllegalArgumentException("Quantity must be greater than zero");
-            }
-        });
-    }
-
-    private OrderDetailsResponse mapToDetailsResponse(OrderEntity orderEntity) {
-
-        var itemResponses = orderEntity.getItems().stream()
-                .map(item -> new OrderItemResponse(
-                        item.getIngredientId(),
-                        item.getQuantity(),
-                        item.getPriceAtOrderTime(),
-                        item.getPrepTimeAtOrderTime()
-                ))
-                .toList();
-
-        return new OrderDetailsResponse(
-                orderEntity.getId(),
-                orderEntity.getCustomerId(),
-                orderEntity.getKitchenId(),
-                orderEntity.getStatus().name(),
-                orderEntity.getTotalPrice(),
-                orderEntity.getTotalPrepTime(),
-                itemResponses
-        );
-    }
-
-    @Transactional(readOnly = true)
-    public List<OrderDetailsResponse> getAllOrders() {
-        return orderRepository.findAll()
-                .stream()
-                .map(this::mapToDetailsResponse)
-                .toList();
-    }
-
-    public double getTotalRevenue() {
-        return orderRepository.findAll()
-                .stream()
-                .mapToDouble(OrderEntity::getTotalPrice)
-                .sum();
-    }
-
-    public long getOrderCount() {
-        return orderRepository.count();
-    }
 }
