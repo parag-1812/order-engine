@@ -295,4 +295,54 @@ public class OrderService {
         }
     }
 
+    private void validateRequest(CreateOrderRequest request) {
+        if (request == null || request.getItems() == null || request.getItems().isEmpty()) {
+            throw new IllegalArgumentException("Order must contain at least one item");
+        }
+
+        request.getItems().forEach(item -> {
+            if (item.getQuantity() <= 0) {
+                throw new IllegalArgumentException("Quantity must be greater than zero");
+            }
+        });
+    }
+
+    private OrderDetailsResponse mapToDetailsResponse(OrderEntity orderEntity) {
+
+        var itemResponses = orderEntity.getItems().stream()
+                .map(item -> new OrderItemResponse(
+                        item.getIngredientId(),
+                        item.getQuantity(),
+                        item.getPriceAtOrderTime(),
+                        item.getPrepTimeAtOrderTime()))
+                .toList();
+
+        return new OrderDetailsResponse(
+                orderEntity.getId(),
+                orderEntity.getCustomerId(),
+                orderEntity.getKitchenId(),
+                orderEntity.getStatus().name(),
+                orderEntity.getTotalPrice(),
+                orderEntity.getTotalPrepTime(),
+                itemResponses);
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderDetailsResponse> getAllOrders() {
+        return orderRepository.findAll()
+                .stream()
+                .map(this::mapToDetailsResponse)
+                .toList();
+    }
+
+    public double getTotalRevenue() {
+        return orderRepository.findAll()
+                .stream()
+                .mapToDouble(OrderEntity::getTotalPrice)
+                .sum();
+    }
+
+    public long getOrderCount() {
+        return orderRepository.count();
+    }
 }
