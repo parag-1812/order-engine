@@ -97,32 +97,7 @@ public class OrderService {
         return order;
     }
 
-    @Transactional(readOnly = true)
-    public OrderDetailsResponse getOrderById(Long orderId) {
-
-        OrderEntity orderEntity = orderRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
-
-        List<OrderItemResponse> itemResponses = orderEntity.getItems()
-                .stream()
-                .map(item -> new OrderItemResponse(
-                        item.getIngredientId(),
-                        item.getQuantity(),
-                        item.getPriceAtOrderTime(),
-                        item.getPrepTimeAtOrderTime()
-                ))
-                .toList();
-
-        return new OrderDetailsResponse(
-                orderEntity.getId(),
-                orderEntity.getCustomerId(),
-                orderEntity.getKitchenId(),
-                orderEntity.getStatus().name(),
-                orderEntity.getTotalPrice(),
-                orderEntity.getTotalPrepTime(),
-                itemResponses
-        );
-    }
+    
 
     @Transactional(readOnly = true)
     public List<OrderDetailsResponse> getOrdersByCustomer(Long customerId) {
