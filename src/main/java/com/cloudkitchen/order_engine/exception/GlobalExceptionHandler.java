@@ -26,6 +26,18 @@ public class GlobalExceptionHandler {
                 return new ResponseEntity<>(error, HttpStatus.CONFLICT);
         }
 
+        @ExceptionHandler(Exception.class)
+        public ResponseEntity<ErrorResponse> handleGeneric(Exception ex) {
+
+                ex.printStackTrace();
+
+                ErrorResponse error = new ErrorResponse(ex.getMessage(),
+                                HttpStatus.INTERNAL_SERVER_ERROR.value());
+
+                return new ResponseEntity<>(error,
+                                HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
         @ExceptionHandler(AccessDeniedException.class)
         public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
                 ErrorResponse error = new ErrorResponse(
