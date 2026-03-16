@@ -247,6 +247,15 @@ Expected role values:
 
 This service does not currently issue JWTs itself. It expects a valid token from an upstream auth/login service or from a manually generated development token that uses the same secret.
 
+### Frontend Alignment
+
+The current frontend is aligned with the backend in the following way:
+
+- customer order creation uses the logged-in JWT user identity instead of a manually entered customer ID
+- customer order history also resolves from the authenticated JWT user
+- admin and customer frontend requests can both use the same order-engine base URL
+- kitchen order lookup still requires a kitchen ID in the route because the current JWT only carries `sub` and `role`, not a kitchen mapping
+
 ### Public Endpoints
 
 These endpoints are intentionally public for developer usability:
@@ -282,10 +291,23 @@ Swagger is useful for:
 
 Current allowed frontend origins in code:
 
-- `http://localhost:5173` for order endpoints
-- `http://localhost:5175` for admin endpoints
+- `http://localhost:5173`
+- `http://localhost:5175`
 
-If your frontend runs on a different port, update the relevant `@CrossOrigin` or shared CORS configuration.
+The shared Spring Security CORS configuration applies across order and admin APIs. If your frontend runs on a different port, update the shared CORS configuration in `SecurityConfig`.
+
+## Error Handling And Logging
+
+The service includes centralized API exception handling through `GlobalExceptionHandler`.
+
+Current behavior:
+
+- validation and request issues return `400`
+- invalid business-state transitions return `409`
+- forbidden access returns `403`
+- unexpected failures are logged on the server and return a generic `500` response without leaking internal exception details
+
+This keeps frontend error handling stable while avoiding raw stack traces in API responses.
 
 ## Tech Stack
 
@@ -358,6 +380,20 @@ dev-secret-key-change-me-32bytes-min
 ```
 
 For real environments, always override that value.
+
+### Frontend Environment Variables
+
+The frontend can point to this service with:
+
+```text
+VITE_API_BASE_URL=http://localhost:8080
+```
+
+The auth frontend base URL is configured separately in the frontend with:
+
+```text
+VITE_AUTH_BASE_URL=http://localhost:8081
+```
 
 ## What Makes This Order Engine Strong
 
