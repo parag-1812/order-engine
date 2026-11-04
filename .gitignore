@@ -31,3 +31,11 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Local H2 database files (must never be versioned) ###
+/data/
+*.mv.db
+*.trace.db
+
+### Production key material (dev keys under resources/keys are intentionally committed) ###
+# jwt-private.pem   # uncomment if you move real keys into the tree

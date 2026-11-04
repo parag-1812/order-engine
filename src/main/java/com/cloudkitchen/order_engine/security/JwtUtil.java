@@ -1,25 +1,32 @@
 package com.cloudkitchen.order_engine.security;
 
 import io.jsonwebtoken.*;
-import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 
-import java.nio.charset.StandardCharsets;
-import java.security.Key;
+import java.security.PublicKey;
 
+/**
+ * Verifies JWTs issued by the auth-service using RS256.
+ * <p>
+ * This service only ever VERIFIES tokens, so it holds the RSA public key alone.
+ * It cannot mint tokens, which is the point of using asymmetric signing across
+ * services. Override {@code jwt.public-key} in production to point at the shared
+ * public key distributed from the auth-service.
+ */
 @Component
 public class JwtUtil {
 
-    private final Key key;
+    private final PublicKey publicKey;
 
-    public JwtUtil(@Value("${jwt.secret}") String secret) {
-        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    public JwtUtil(@Value("${jwt.public-key}") Resource publicKeyResource) {
+        this.publicKey = PemKeyLoader.readPublicKey(publicKeyResource);
     }
 
     public Claims extractAllClaims(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(key)
+                .setSigningKey(publicKey)
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
