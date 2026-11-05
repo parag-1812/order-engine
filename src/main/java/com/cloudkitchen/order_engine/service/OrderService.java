@@ -12,6 +12,7 @@ import com.cloudkitchen.order_engine.repository.OrderRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Service
@@ -90,87 +91,69 @@ public class OrderService {
         return order;
     }
 
+    /**
+     * Create an order from a custom AI-parsed dish. The dish is priced from a
+     * formula (ingredient + cooking + packaging + platform fee + delivery) and
+     * routed to the first kitchen compatible with its veg/non-veg type.
+     */
+    @Transactional
+    public OrderDetailsResponse createCustomOrder(Long customerId, CreateCustomOrderRequest request) {
+
+        int quantity = request.getQuantity() <= 0 ? 1 : request.getQuantity();
+        boolean isVegetarian = !"NON_VEG".equalsIgnoreCase(request.getDishType());
+
+        KitchenEntity kitchen = kitchenRepository.findAll().stream()
+                .filter(k -> isKitchenCompatible(k, isVegetarian))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        "No kitchen available for a " + (isVegetarian ? "veg" : "non-veg") + " dish"));
+
+        int ingredientCount = request.getIngredients() == null ? 0 : request.getIngredients().size();
+        double totalPrice = computePrice(request.getProtein(), ingredientCount, request.getCookingStyle()) * quantity;
+        int totalPrepTime = computePrepTime(request.getProtein(), ingredientCount, request.getCookingStyle(), quantity);
+
+        OrderEntity orderEntity = new OrderEntity(
+                customerId,
+                kitchen.getId(),
+                OrderStatus.KITCHEN_ASSIGNED,
+                totalPrice,
+                totalPrepTime);
+
+        orderEntity.setDishType(isVegetarian ? "VEG" : "NON_VEG");
+        orderEntity.setProtein(request.getProtein());
+        orderEntity.setIngredientsCsv(
+                request.getIngredients() == null ? null : String.join(", ", request.getIngredients()));
+        orderEntity.setCookingStyle(request.getCookingStyle());
+        orderEntity.setSpiceLevel(request.getSpiceLevel());
+        orderEntity.setOilLevel(request.getOilLevel());
+        orderEntity.setSpecialInstructions(request.getSpecialInstructions());
+        orderEntity.setDishSummary(request.getSummary());
+        orderEntity.setQuantity(quantity);
+
+        orderRepository.save(orderEntity);
+
+        return mapToDetailsResponse(orderEntity);
+    }
+
     @Transactional(readOnly = true)
     public OrderDetailsResponse getOrderById(Long orderId) {
-
         OrderEntity orderEntity = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found"));
-
-        List<OrderItemResponse> itemResponses = orderEntity.getItems()
-                .stream()
-                .map(item -> new OrderItemResponse(
-                        item.getIngredientId(),
-                        item.getQuantity(),
-                        item.getPriceAtOrderTime(),
-                        item.getPrepTimeAtOrderTime()))
-                .toList();
-
-        return new OrderDetailsResponse(
-                orderEntity.getId(),
-                orderEntity.getCustomerId(),
-                orderEntity.getKitchenId(),
-                orderEntity.getStatus().name(),
-                orderEntity.getTotalPrice(),
-                orderEntity.getTotalPrepTime(),
-                itemResponses);
+        return mapToDetailsResponse(orderEntity);
     }
 
     @Transactional(readOnly = true)
     public List<OrderDetailsResponse> getOrdersByCustomer(Long customerId) {
-
-        List<OrderEntity> orders = orderRepository.findByCustomerId(customerId);
-
-        return orders.stream()
-                .map(orderEntity -> {
-
-                    List<OrderItemResponse> items = orderEntity.getItems()
-                            .stream()
-                            .map(item -> new OrderItemResponse(
-                                    item.getIngredientId(),
-                                    item.getQuantity(),
-                                    item.getPriceAtOrderTime(),
-                                    item.getPrepTimeAtOrderTime()))
-                            .collect(java.util.stream.Collectors.toList());
-
-                    return new OrderDetailsResponse(
-                            orderEntity.getId(),
-                            orderEntity.getCustomerId(),
-                            orderEntity.getKitchenId(),
-                            orderEntity.getStatus().name(),
-                            orderEntity.getTotalPrice(),
-                            orderEntity.getTotalPrepTime(),
-                            items);
-                })
-                .collect(java.util.stream.Collectors.toList());
+        return orderRepository.findByCustomerId(customerId).stream()
+                .map(this::mapToDetailsResponse)
+                .toList();
     }
 
     @Transactional(readOnly = true)
     public List<OrderDetailsResponse> getOrdersByKitchen(Long kitchenId) {
-
-        List<OrderEntity> orders = orderRepository.findByKitchenId(kitchenId);
-
-        return orders.stream()
-                .map(orderEntity -> {
-
-                    List<OrderItemResponse> items = orderEntity.getItems()
-                            .stream()
-                            .map(item -> new OrderItemResponse(
-                                    item.getIngredientId(),
-                                    item.getQuantity(),
-                                    item.getPriceAtOrderTime(),
-                                    item.getPrepTimeAtOrderTime()))
-                            .collect(java.util.stream.Collectors.toList());
-
-                    return new OrderDetailsResponse(
-                            orderEntity.getId(),
-                            orderEntity.getCustomerId(),
-                            orderEntity.getKitchenId(),
-                            orderEntity.getStatus().name(),
-                            orderEntity.getTotalPrice(),
-                            orderEntity.getTotalPrepTime(),
-                            items);
-                })
-                .collect(java.util.stream.Collectors.toList());
+        return orderRepository.findByKitchenId(kitchenId).stream()
+                .map(this::mapToDetailsResponse)
+                .toList();
     }
 
     @Transactional
@@ -214,10 +197,12 @@ public class OrderService {
             InventoryEntity inventory = inventoryList.stream()
                     .filter(i -> i.getIngredientId().equals(item.getIngredientId()))
                     .findFirst()
-                    .orElseThrow();
+                    .orElse(null);
 
-            inventory.increaseQuantity(item.getQuantity());
-            inventoryRepository.save(inventory);
+            if (inventory != null) {
+                inventory.increaseQuantity(item.getQuantity());
+                inventoryRepository.save(inventory);
+            }
         }
 
         orderEntity.setStatus(OrderStatus.CANCELLED);
@@ -307,15 +292,77 @@ public class OrderService {
         });
     }
 
+    // ---- Pricing for custom dishes (all amounts in Rs.) ----
+
+    private double computePrice(String protein, int ingredientCount, String cookingStyle) {
+        double base = 120;
+        double proteinCost = proteinCost(protein);
+        double ingredientsCost = ingredientCount * 15.0;
+        double cookingCost = cookingCost(cookingStyle);
+        double subtotal = base + proteinCost + ingredientsCost + cookingCost;
+
+        double packaging = 20;
+        double platformFee = Math.round(subtotal * 0.05);
+        double delivery = 30;
+
+        return subtotal + packaging + platformFee + delivery;
+    }
+
+    private double proteinCost(String protein) {
+        if (protein == null || protein.isBlank()) return 0;
+        return switch (protein.trim().toLowerCase()) {
+            case "chicken", "mutton", "fish", "prawn" -> 90;
+            case "paneer" -> 60;
+            case "tofu", "soya" -> 50;
+            case "egg" -> 40;
+            default -> 0;
+        };
+    }
+
+    private double cookingCost(String cookingStyle) {
+        if (cookingStyle == null) return 20;
+        return switch (cookingStyle.trim().toLowerCase()) {
+            case "tandoor", "grilled", "smoked" -> 40;
+            case "baked", "roasted" -> 30;
+            case "fried" -> 25;
+            case "curry" -> 20;
+            default -> 15;
+        };
+    }
+
+    private int computePrepTime(String protein, int ingredientCount, String cookingStyle, int quantity) {
+        int base = 15;
+        int ingredients = ingredientCount * 2;
+        int style = switch (cookingStyle == null ? "" : cookingStyle.trim().toLowerCase()) {
+            case "tandoor", "grilled" -> 15;
+            case "smoked" -> 18;
+            case "baked", "roasted" -> 12;
+            case "curry", "steamed" -> 10;
+            case "fried" -> 8;
+            case "dry" -> 6;
+            default -> 10;
+        };
+        int proteinTime = proteinCost(protein) > 0 && !"paneer".equalsIgnoreCase(protein == null ? "" : protein.trim()) ? 5 : 0;
+        return base + ingredients + style + proteinTime + (quantity - 1) * 2;
+    }
+
+    // ---- Response mapping (single source of truth, includes custom dish fields) ----
+
     private OrderDetailsResponse mapToDetailsResponse(OrderEntity orderEntity) {
 
-        var itemResponses = orderEntity.getItems().stream()
+        List<OrderItemResponse> itemResponses = orderEntity.getItems().stream()
                 .map(item -> new OrderItemResponse(
                         item.getIngredientId(),
                         item.getQuantity(),
                         item.getPriceAtOrderTime(),
                         item.getPrepTimeAtOrderTime()))
                 .toList();
+
+        List<String> ingredients = orderEntity.getIngredientsCsv() == null ? null
+                : Arrays.stream(orderEntity.getIngredientsCsv().split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .toList();
 
         return new OrderDetailsResponse(
                 orderEntity.getId(),
@@ -324,7 +371,16 @@ public class OrderService {
                 orderEntity.getStatus().name(),
                 orderEntity.getTotalPrice(),
                 orderEntity.getTotalPrepTime(),
-                itemResponses);
+                itemResponses,
+                orderEntity.getDishType(),
+                orderEntity.getProtein(),
+                ingredients,
+                orderEntity.getCookingStyle(),
+                orderEntity.getSpiceLevel(),
+                orderEntity.getOilLevel(),
+                orderEntity.getSpecialInstructions(),
+                orderEntity.getDishSummary(),
+                orderEntity.getQuantity());
     }
 
     @Transactional(readOnly = true)

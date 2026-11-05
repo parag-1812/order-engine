@@ -1,6 +1,7 @@
 package com.cloudkitchen.order_engine.controller;
 
 import com.cloudkitchen.order_engine.customer.CustomerEntity;
+import com.cloudkitchen.order_engine.dto.CreateCustomOrderRequest;
 import com.cloudkitchen.order_engine.dto.CreateOrderRequest;
 import com.cloudkitchen.order_engine.dto.OrderDetailsResponse;
 import com.cloudkitchen.order_engine.dto.OrderResponse;
@@ -50,6 +51,19 @@ public class OrderController {
         );
 
         return ResponseEntity.ok(response);
+    }
+
+    // ===============================
+    // CREATE CUSTOM (AI) ORDER (USER ONLY)
+    // ===============================
+    @PostMapping("/custom")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<OrderDetailsResponse> createCustomOrder(
+            @RequestBody CreateCustomOrderRequest request,
+            Authentication authentication
+    ) {
+        Long customerId = resolveCustomerId(authentication);
+        return ResponseEntity.ok(orderService.createCustomOrder(customerId, request));
     }
 
     // ===============================
