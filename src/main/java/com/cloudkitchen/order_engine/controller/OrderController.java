@@ -3,7 +3,9 @@ package com.cloudkitchen.order_engine.controller;
 import com.cloudkitchen.order_engine.customer.CustomerEntity;
 import com.cloudkitchen.order_engine.dto.CreateCustomOrderRequest;
 import com.cloudkitchen.order_engine.dto.CreateOrderRequest;
+import com.cloudkitchen.order_engine.dto.FavoriteRequest;
 import com.cloudkitchen.order_engine.dto.OrderDetailsResponse;
+import com.cloudkitchen.order_engine.dto.RateOrderRequest;
 import com.cloudkitchen.order_engine.dto.OrderResponse;
 import com.cloudkitchen.order_engine.dto.PaymentCreateResponse;
 import com.cloudkitchen.order_engine.dto.VerifyPaymentRequest;
@@ -150,6 +152,37 @@ public class OrderController {
     ) {
         paymentService.verifyAndMarkPaid(orderId, request);
         return ResponseEntity.ok(orderService.getOrderById(orderId));
+    }
+
+    // ===============================
+    // RATINGS / FAVOURITES / REORDER (USER ONLY)
+    // ===============================
+    @PatchMapping("/{orderId}/rating")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<OrderDetailsResponse> rateOrder(
+            @PathVariable Long orderId,
+            @RequestBody RateOrderRequest request
+    ) {
+        return ResponseEntity.ok(orderService.rateOrder(orderId, request.getRating(), request.getReview()));
+    }
+
+    @PatchMapping("/{orderId}/favorite")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<OrderDetailsResponse> setFavorite(
+            @PathVariable Long orderId,
+            @RequestBody FavoriteRequest request
+    ) {
+        return ResponseEntity.ok(orderService.setFavorite(orderId, request.isFavorite()));
+    }
+
+    @PostMapping("/{orderId}/reorder")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<OrderDetailsResponse> reorder(
+            @PathVariable Long orderId,
+            Authentication authentication
+    ) {
+        Long customerId = resolveCustomerId(authentication);
+        return ResponseEntity.ok(orderService.reorder(orderId, customerId));
     }
 
     // ===============================

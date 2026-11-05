@@ -149,6 +149,8 @@ public class OrderService {
         orderEntity.setDishSummary(request.getSummary());
         orderEntity.setQuantity(quantity);
         orderEntity.setDistanceKm(distanceKm);
+        orderEntity.setCustomerLat(request.getCustomerLat());
+        orderEntity.setCustomerLng(request.getCustomerLng());
 
         orderRepository.save(orderEntity);
 
@@ -174,6 +176,55 @@ public class OrderService {
         return orderRepository.findByKitchenId(kitchenId).stream()
                 .map(this::mapToDetailsResponse)
                 .toList();
+    }
+
+    @Transactional
+    public OrderDetailsResponse rateOrder(Long orderId, int rating, String review) {
+        OrderEntity order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+        if (order.getStatus() != OrderStatus.DELIVERED) {
+            throw new IllegalStateException("You can only rate an order once it's delivered");
+        }
+        if (rating < 1 || rating > 5) {
+            throw new IllegalArgumentException("Rating must be between 1 and 5");
+        }
+        order.setRating(rating);
+        order.setReview(review);
+        orderRepository.save(order);
+        return mapToDetailsResponse(order);
+    }
+
+    @Transactional
+    public OrderDetailsResponse setFavorite(Long orderId, boolean favorite) {
+        OrderEntity order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+        order.setFavorite(favorite);
+        orderRepository.save(order);
+        return mapToDetailsResponse(order);
+    }
+
+    @Transactional
+    public OrderDetailsResponse reorder(Long orderId, Long customerId) {
+        OrderEntity src = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+        if (src.getDishType() == null) {
+            throw new IllegalStateException("Only AI dishes can be reordered");
+        }
+        CreateCustomOrderRequest req = new CreateCustomOrderRequest();
+        req.setDishType(src.getDishType());
+        req.setProtein(src.getProtein());
+        req.setIngredients(src.getIngredientsCsv() == null ? null
+                : Arrays.stream(src.getIngredientsCsv().split(","))
+                        .map(String::trim).filter(s -> !s.isEmpty()).toList());
+        req.setCookingStyle(src.getCookingStyle());
+        req.setSpiceLevel(src.getSpiceLevel());
+        req.setOilLevel(src.getOilLevel());
+        req.setSpecialInstructions(src.getSpecialInstructions());
+        req.setSummary(src.getDishSummary());
+        req.setQuantity(src.getQuantity() == null ? 1 : src.getQuantity());
+        req.setCustomerLat(src.getCustomerLat());
+        req.setCustomerLng(src.getCustomerLng());
+        return createCustomOrder(customerId, req);
     }
 
     @Transactional
@@ -408,7 +459,10 @@ public class OrderService {
                 orderEntity.getQuantity(),
                 kitchenName,
                 orderEntity.getDistanceKm(),
-                orderEntity.getPaymentStatus());
+                orderEntity.getPaymentStatus(),
+                orderEntity.getRating(),
+                orderEntity.getReview(),
+                orderEntity.isFavorite());
     }
 
     private double haversineKm(double lat1, double lon1, double lat2, double lon2) {

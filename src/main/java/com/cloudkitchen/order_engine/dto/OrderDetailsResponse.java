@@ -25,6 +25,9 @@ public class OrderDetailsResponse {
     private String kitchenName;
     private Double distanceKm;
     private String paymentStatus;
+    private Integer rating;
+    private String review;
+    private boolean favorite;
 
     public OrderDetailsResponse(
             Long orderId,
@@ -45,7 +48,10 @@ public class OrderDetailsResponse {
             Integer quantity,
             String kitchenName,
             Double distanceKm,
-            String paymentStatus
+            String paymentStatus,
+            Integer rating,
+            String review,
+            boolean favorite
     ) {
         this.orderId = orderId;
         this.customerId = customerId;
@@ -66,6 +72,9 @@ public class OrderDetailsResponse {
         this.kitchenName = kitchenName;
         this.distanceKm = distanceKm;
         this.paymentStatus = paymentStatus;
+        this.rating = rating;
+        this.review = review;
+        this.favorite = favorite;
     }
 
     public Long getOrderId() { return orderId; }
@@ -88,4 +97,7 @@ public class OrderDetailsResponse {
     public String getKitchenName() { return kitchenName; }
     public Double getDistanceKm() { return distanceKm; }
     public String getPaymentStatus() { return paymentStatus; }
+    public Integer getRating() { return rating; }
+    public String getReview() { return review; }
+    public boolean isFavorite() { return favorite; }
 }

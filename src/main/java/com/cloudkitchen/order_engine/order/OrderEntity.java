@@ -42,6 +42,12 @@ public class OrderEntity {
     private Double distanceKm;
     private String paymentStatus = "UNPAID";
     private String razorpayOrderId;
+    private Integer rating;
+    @Column(length = 2000)
+    private String review;
+    private boolean favorite = false;
+    private Double customerLat;
+    private Double customerLng;
 
     protected OrderEntity() {
 
@@ -134,4 +140,19 @@ public class OrderEntity {
 
     public String getRazorpayOrderId() { return razorpayOrderId; }
     public void setRazorpayOrderId(String razorpayOrderId) { this.razorpayOrderId = razorpayOrderId; }
+
+    public Integer getRating() { return rating; }
+    public void setRating(Integer rating) { this.rating = rating; }
+
+    public String getReview() { return review; }
+    public void setReview(String review) { this.review = review; }
+
+    public boolean isFavorite() { return favorite; }
+    public void setFavorite(boolean favorite) { this.favorite = favorite; }
+
+    public Double getCustomerLat() { return customerLat; }
+    public void setCustomerLat(Double customerLat) { this.customerLat = customerLat; }
+
+    public Double getCustomerLng() { return customerLng; }
+    public void setCustomerLng(Double customerLng) { this.customerLng = customerLng; }
 }
