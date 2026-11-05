@@ -40,6 +40,8 @@ public class OrderEntity {
     private String dishSummary;
     private Integer quantity;
     private Double distanceKm;
+    private String paymentStatus = "UNPAID";
+    private String razorpayOrderId;
 
     protected OrderEntity() {
 
@@ -126,4 +128,10 @@ public class OrderEntity {
 
     public Double getDistanceKm() { return distanceKm; }
     public void setDistanceKm(Double distanceKm) { this.distanceKm = distanceKm; }
+
+    public String getPaymentStatus() { return paymentStatus; }
+    public void setPaymentStatus(String paymentStatus) { this.paymentStatus = paymentStatus; }
+
+    public String getRazorpayOrderId() { return razorpayOrderId; }
+    public void setRazorpayOrderId(String razorpayOrderId) { this.razorpayOrderId = razorpayOrderId; }
 }

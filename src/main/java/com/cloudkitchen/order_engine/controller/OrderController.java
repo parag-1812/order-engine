@@ -5,10 +5,13 @@ import com.cloudkitchen.order_engine.dto.CreateCustomOrderRequest;
 import com.cloudkitchen.order_engine.dto.CreateOrderRequest;
 import com.cloudkitchen.order_engine.dto.OrderDetailsResponse;
 import com.cloudkitchen.order_engine.dto.OrderResponse;
+import com.cloudkitchen.order_engine.dto.PaymentCreateResponse;
+import com.cloudkitchen.order_engine.dto.VerifyPaymentRequest;
 import com.cloudkitchen.order_engine.order.Order;
 import com.cloudkitchen.order_engine.order.OrderStatus;
 import com.cloudkitchen.order_engine.repository.CustomerRepository;
 import com.cloudkitchen.order_engine.service.OrderService;
+import com.cloudkitchen.order_engine.service.PaymentService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -22,11 +25,14 @@ public class OrderController {
 
     private final OrderService orderService;
     private final CustomerRepository customerRepository;
+    private final PaymentService paymentService;
 
     public OrderController(OrderService orderService,
-                           CustomerRepository customerRepository) {
+                           CustomerRepository customerRepository,
+                           PaymentService paymentService) {
         this.orderService = orderService;
         this.customerRepository = customerRepository;
+        this.paymentService = paymentService;
     }
 
     // ===============================
@@ -125,6 +131,25 @@ public class OrderController {
     ) {
         orderService.cancelOrder(orderId);
         return ResponseEntity.ok("Order cancelled successfully");
+    }
+
+    // ===============================
+    // PAYMENTS (USER ONLY)
+    // ===============================
+    @PostMapping("/{orderId}/pay")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<PaymentCreateResponse> createPayment(@PathVariable Long orderId) {
+        return ResponseEntity.ok(paymentService.createPayment(orderId));
+    }
+
+    @PostMapping("/{orderId}/pay/verify")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<OrderDetailsResponse> verifyPayment(
+            @PathVariable Long orderId,
+            @RequestBody VerifyPaymentRequest request
+    ) {
+        paymentService.verifyAndMarkPaid(orderId, request);
+        return ResponseEntity.ok(orderService.getOrderById(orderId));
     }
 
     // ===============================

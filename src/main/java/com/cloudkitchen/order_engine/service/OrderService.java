@@ -407,7 +407,8 @@ public class OrderService {
                 orderEntity.getDishSummary(),
                 orderEntity.getQuantity(),
                 kitchenName,
-                orderEntity.getDistanceKm());
+                orderEntity.getDistanceKm(),
+                orderEntity.getPaymentStatus());
     }
 
     private double haversineKm(double lat1, double lon1, double lat2, double lon2) {

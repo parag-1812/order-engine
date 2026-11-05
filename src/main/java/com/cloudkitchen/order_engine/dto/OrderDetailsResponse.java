@@ -24,6 +24,7 @@ public class OrderDetailsResponse {
     private Integer quantity;
     private String kitchenName;
     private Double distanceKm;
+    private String paymentStatus;
 
     public OrderDetailsResponse(
             Long orderId,
@@ -43,7 +44,8 @@ public class OrderDetailsResponse {
             String dishSummary,
             Integer quantity,
             String kitchenName,
-            Double distanceKm
+            Double distanceKm,
+            String paymentStatus
     ) {
         this.orderId = orderId;
         this.customerId = customerId;
@@ -63,6 +65,7 @@ public class OrderDetailsResponse {
         this.quantity = quantity;
         this.kitchenName = kitchenName;
         this.distanceKm = distanceKm;
+        this.paymentStatus = paymentStatus;
     }
 
     public Long getOrderId() { return orderId; }
@@ -84,4 +87,5 @@ public class OrderDetailsResponse {
     public Integer getQuantity() { return quantity; }
     public String getKitchenName() { return kitchenName; }
     public Double getDistanceKm() { return distanceKm; }
+    public String getPaymentStatus() { return paymentStatus; }
 }

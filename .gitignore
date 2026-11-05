@@ -37,5 +37,8 @@ build/
 *.mv.db
 *.trace.db
 
+### Razorpay keys — stay on this machine, never committed ###
+.razorpay-key
+
 ### Production key material (dev keys under resources/keys are intentionally committed) ###
 # jwt-private.pem   # uncomment if you move real keys into the tree
