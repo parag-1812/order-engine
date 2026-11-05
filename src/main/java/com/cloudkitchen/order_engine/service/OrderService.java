@@ -9,6 +9,7 @@ import com.cloudkitchen.order_engine.repository.IngredientRepository;
 import com.cloudkitchen.order_engine.repository.InventoryRepository;
 import com.cloudkitchen.order_engine.repository.KitchenRepository;
 import com.cloudkitchen.order_engine.repository.OrderRepository;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -155,6 +156,16 @@ public class OrderService {
         orderRepository.save(orderEntity);
 
         return mapToDetailsResponse(orderEntity);
+    }
+
+    /** Throws 403 if the order doesn't belong to this customer. */
+    @Transactional(readOnly = true)
+    public void assertOwnedBy(Long orderId, Long customerId) {
+        OrderEntity order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+        if (order.getCustomerId() == null || !order.getCustomerId().equals(customerId)) {
+            throw new AccessDeniedException("You can only access your own orders");
+        }
     }
 
     @Transactional(readOnly = true)

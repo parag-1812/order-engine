@@ -80,8 +80,14 @@ public class OrderController {
     @GetMapping("/{orderId}")
     @PreAuthorize("hasAnyRole('USER','KITCHEN')")
     public ResponseEntity<OrderDetailsResponse> getOrder(
-            @PathVariable Long orderId
+            @PathVariable Long orderId,
+            Authentication authentication
     ) {
+        boolean isUser = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_USER"));
+        if (isUser) {
+            orderService.assertOwnedBy(orderId, resolveCustomerId(authentication));
+        }
         return ResponseEntity.ok(orderService.getOrderById(orderId));
     }
 
@@ -129,8 +135,10 @@ public class OrderController {
     @PatchMapping("/{orderId}/cancel")
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<String> cancelOrder(
-            @PathVariable Long orderId
+            @PathVariable Long orderId,
+            Authentication authentication
     ) {
+        requireOwner(orderId, authentication);
         orderService.cancelOrder(orderId);
         return ResponseEntity.ok("Order cancelled successfully");
     }
@@ -140,7 +148,11 @@ public class OrderController {
     // ===============================
     @PostMapping("/{orderId}/pay")
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<PaymentCreateResponse> createPayment(@PathVariable Long orderId) {
+    public ResponseEntity<PaymentCreateResponse> createPayment(
+            @PathVariable Long orderId,
+            Authentication authentication
+    ) {
+        requireOwner(orderId, authentication);
         return ResponseEntity.ok(paymentService.createPayment(orderId));
     }
 
@@ -148,8 +160,10 @@ public class OrderController {
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<OrderDetailsResponse> verifyPayment(
             @PathVariable Long orderId,
-            @RequestBody VerifyPaymentRequest request
+            @RequestBody VerifyPaymentRequest request,
+            Authentication authentication
     ) {
+        requireOwner(orderId, authentication);
         paymentService.verifyAndMarkPaid(orderId, request);
         return ResponseEntity.ok(orderService.getOrderById(orderId));
     }
@@ -161,8 +175,10 @@ public class OrderController {
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<OrderDetailsResponse> rateOrder(
             @PathVariable Long orderId,
-            @RequestBody RateOrderRequest request
+            @RequestBody RateOrderRequest request,
+            Authentication authentication
     ) {
+        requireOwner(orderId, authentication);
         return ResponseEntity.ok(orderService.rateOrder(orderId, request.getRating(), request.getReview()));
     }
 
@@ -170,8 +186,10 @@ public class OrderController {
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<OrderDetailsResponse> setFavorite(
             @PathVariable Long orderId,
-            @RequestBody FavoriteRequest request
+            @RequestBody FavoriteRequest request,
+            Authentication authentication
     ) {
+        requireOwner(orderId, authentication);
         return ResponseEntity.ok(orderService.setFavorite(orderId, request.isFavorite()));
     }
 
@@ -182,12 +200,18 @@ public class OrderController {
             Authentication authentication
     ) {
         Long customerId = resolveCustomerId(authentication);
+        orderService.assertOwnedBy(orderId, customerId);
         return ResponseEntity.ok(orderService.reorder(orderId, customerId));
     }
 
     // ===============================
-    // PRIVATE HELPER METHOD
+    // PRIVATE HELPER METHODS
     // ===============================
+    /** 403 unless the order belongs to the authenticated customer. */
+    private void requireOwner(Long orderId, Authentication authentication) {
+        orderService.assertOwnedBy(orderId, resolveCustomerId(authentication));
+    }
+
     private Long resolveCustomerId(Authentication authentication) {
 
         String username = authentication.getName();
