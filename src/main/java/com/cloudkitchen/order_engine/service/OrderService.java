@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -102,11 +103,29 @@ public class OrderService {
         int quantity = request.getQuantity() <= 0 ? 1 : request.getQuantity();
         boolean isVegetarian = !"NON_VEG".equalsIgnoreCase(request.getDishType());
 
-        KitchenEntity kitchen = kitchenRepository.findAll().stream()
+        List<KitchenEntity> compatible = kitchenRepository.findAll().stream()
                 .filter(k -> isKitchenCompatible(k, isVegetarian))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException(
-                        "No kitchen available for a " + (isVegetarian ? "veg" : "non-veg") + " dish"));
+                .toList();
+        if (compatible.isEmpty()) {
+            throw new IllegalStateException(
+                    "No kitchen available for a " + (isVegetarian ? "veg" : "non-veg") + " dish");
+        }
+
+        // Route to the nearest compatible kitchen when the customer shared a location.
+        KitchenEntity kitchen;
+        Double distanceKm = null;
+        if (request.getCustomerLat() != null && request.getCustomerLng() != null) {
+            double lat = request.getCustomerLat();
+            double lng = request.getCustomerLng();
+            kitchen = compatible.stream()
+                    .min(Comparator.comparingDouble(
+                            k -> haversineKm(lat, lng, k.getLatitude(), k.getLongitude())))
+                    .orElseThrow();
+            distanceKm = Math.round(
+                    haversineKm(lat, lng, kitchen.getLatitude(), kitchen.getLongitude()) * 10.0) / 10.0;
+        } else {
+            kitchen = compatible.get(0);
+        }
 
         int ingredientCount = request.getIngredients() == null ? 0 : request.getIngredients().size();
         double totalPrice = computePrice(request.getProtein(), ingredientCount, request.getCookingStyle()) * quantity;
@@ -129,6 +148,7 @@ public class OrderService {
         orderEntity.setSpecialInstructions(request.getSpecialInstructions());
         orderEntity.setDishSummary(request.getSummary());
         orderEntity.setQuantity(quantity);
+        orderEntity.setDistanceKm(distanceKm);
 
         orderRepository.save(orderEntity);
 
@@ -364,6 +384,11 @@ public class OrderService {
                         .filter(s -> !s.isEmpty())
                         .toList();
 
+        String kitchenName = orderEntity.getKitchenId() == null ? null
+                : kitchenRepository.findById(orderEntity.getKitchenId())
+                        .map(KitchenEntity::getName)
+                        .orElse(null);
+
         return new OrderDetailsResponse(
                 orderEntity.getId(),
                 orderEntity.getCustomerId(),
@@ -380,7 +405,19 @@ public class OrderService {
                 orderEntity.getOilLevel(),
                 orderEntity.getSpecialInstructions(),
                 orderEntity.getDishSummary(),
-                orderEntity.getQuantity());
+                orderEntity.getQuantity(),
+                kitchenName,
+                orderEntity.getDistanceKm());
+    }
+
+    private double haversineKm(double lat1, double lon1, double lat2, double lon2) {
+        double earthRadiusKm = 6371.0;
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
     @Transactional(readOnly = true)

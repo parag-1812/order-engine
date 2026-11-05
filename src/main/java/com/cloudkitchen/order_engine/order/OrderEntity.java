@@ -39,6 +39,7 @@ public class OrderEntity {
     @Column(length = 1000)
     private String dishSummary;
     private Integer quantity;
+    private Double distanceKm;
 
     protected OrderEntity() {
 
@@ -122,4 +123,7 @@ public class OrderEntity {
 
     public Integer getQuantity() { return quantity; }
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
+
+    public Double getDistanceKm() { return distanceKm; }
+    public void setDistanceKm(Double distanceKm) { this.distanceKm = distanceKm; }
 }

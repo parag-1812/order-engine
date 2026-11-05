@@ -18,6 +18,8 @@ public class CreateCustomOrderRequest {
     private String specialInstructions;
     private String summary;
     private int quantity = 1;
+    private Double customerLat;
+    private Double customerLng;
 
     public String getDishType() { return dishType; }
     public void setDishType(String dishType) { this.dishType = dishType; }
@@ -48,4 +50,10 @@ public class CreateCustomOrderRequest {
 
     public int getQuantity() { return quantity; }
     public void setQuantity(int quantity) { this.quantity = quantity; }
+
+    public Double getCustomerLat() { return customerLat; }
+    public void setCustomerLat(Double customerLat) { this.customerLat = customerLat; }
+
+    public Double getCustomerLng() { return customerLng; }
+    public void setCustomerLng(Double customerLng) { this.customerLng = customerLng; }
 }
