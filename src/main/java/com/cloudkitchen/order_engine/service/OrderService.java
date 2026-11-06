@@ -1,5 +1,7 @@
 package com.cloudkitchen.order_engine.service;
 
+import com.cloudkitchen.order_engine.catalog.CatalogIngredientEntity;
+import com.cloudkitchen.order_engine.catalog.CatalogService;
 import com.cloudkitchen.order_engine.dto.*;
 import com.cloudkitchen.order_engine.ingredient.IngredientEntity;
 import com.cloudkitchen.order_engine.inventory.InventoryEntity;
@@ -13,8 +15,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -24,16 +26,19 @@ public class OrderService {
     private final KitchenRepository kitchenRepository;
     private final InventoryRepository inventoryRepository;
     private final OrderRepository orderRepository;
+    private final CatalogService catalogService;
 
     public OrderService(
             IngredientRepository ingredientRepository,
             KitchenRepository kitchenRepository,
             InventoryRepository inventoryRepository,
-            OrderRepository orderRepository) {
+            OrderRepository orderRepository,
+            CatalogService catalogService) {
         this.ingredientRepository = ingredientRepository;
         this.kitchenRepository = kitchenRepository;
         this.inventoryRepository = inventoryRepository;
         this.orderRepository = orderRepository;
+        this.catalogService = catalogService;
     }
 
     @Transactional
@@ -112,21 +117,44 @@ public class OrderService {
                     "No kitchen available for a " + (isVegetarian ? "veg" : "non-veg") + " dish");
         }
 
-        // Route to the nearest compatible kitchen when the customer shared a location.
-        KitchenEntity kitchen;
-        Double distanceKm = null;
-        if (request.getCustomerLat() != null && request.getCustomerLng() != null) {
-            double lat = request.getCustomerLat();
-            double lng = request.getCustomerLng();
-            kitchen = compatible.stream()
-                    .min(Comparator.comparingDouble(
-                            k -> haversineKm(lat, lng, k.getLatitude(), k.getLongitude())))
-                    .orElseThrow();
-            distanceKm = Math.round(
-                    haversineKm(lat, lng, kitchen.getLatitude(), kitchen.getLongitude()) * 10.0) / 10.0;
-        } else {
-            kitchen = compatible.get(0);
+        // What does this dish actually require? Resolve the AI's free-text
+        // ingredients (plus the protein) onto the shared canonical catalog.
+        List<String> rawRequired = new ArrayList<>();
+        if (request.getIngredients() != null) {
+            rawRequired.addAll(request.getIngredients());
         }
+        if (request.getProtein() != null && !request.getProtein().isBlank()) {
+            rawRequired.add(request.getProtein());
+        }
+        List<CatalogIngredientEntity> required = catalogService.resolve(rawRequired).matched();
+
+        boolean hasLocation = request.getCustomerLat() != null && request.getCustomerLng() != null;
+        double lat = hasLocation ? request.getCustomerLat() : 0;
+        double lng = hasLocation ? request.getCustomerLng() : 0;
+
+        // Rank kitchens by how much of the dish they can cover, then by distance.
+        // Best coverage wins; a tie breaks toward the nearest kitchen.
+        KitchenEntity kitchen = null;
+        CatalogService.Coverage bestCoverage = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (KitchenEntity k : compatible) {
+            CatalogService.Coverage cov = catalogService.coverageFor(k.getId(), required);
+            double dist = hasLocation
+                    ? haversineKm(lat, lng, k.getLatitude(), k.getLongitude())
+                    : 0;
+            boolean better = bestCoverage == null
+                    || cov.score() > bestCoverage.score()
+                    || (cov.score() == bestCoverage.score() && dist < bestDistance);
+            if (better) {
+                kitchen = k;
+                bestCoverage = cov;
+                bestDistance = dist;
+            }
+        }
+
+        Double distanceKm = hasLocation
+                ? Math.round(haversineKm(lat, lng, kitchen.getLatitude(), kitchen.getLongitude()) * 10.0) / 10.0
+                : null;
 
         int ingredientCount = request.getIngredients() == null ? 0 : request.getIngredients().size();
         double totalPrice = computePrice(request.getProtein(), ingredientCount, request.getCookingStyle()) * quantity;
@@ -152,6 +180,9 @@ public class OrderService {
         orderEntity.setDistanceKm(distanceKm);
         orderEntity.setCustomerLat(request.getCustomerLat());
         orderEntity.setCustomerLng(request.getCustomerLng());
+        orderEntity.setMatchScore(bestCoverage.score());
+        orderEntity.setMissingItemsCsv(
+                bestCoverage.missing().isEmpty() ? null : String.join(", ", bestCoverage.missing()));
 
         orderRepository.save(orderEntity);
 
@@ -451,6 +482,12 @@ public class OrderService {
                         .map(KitchenEntity::getName)
                         .orElse(null);
 
+        List<String> missingItems = orderEntity.getMissingItemsCsv() == null ? null
+                : Arrays.stream(orderEntity.getMissingItemsCsv().split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .toList();
+
         return new OrderDetailsResponse(
                 orderEntity.getId(),
                 orderEntity.getCustomerId(),
@@ -473,7 +510,9 @@ public class OrderService {
                 orderEntity.getPaymentStatus(),
                 orderEntity.getRating(),
                 orderEntity.getReview(),
-                orderEntity.isFavorite());
+                orderEntity.isFavorite(),
+                orderEntity.getMatchScore(),
+                missingItems);
     }
 
     private double haversineKm(double lat1, double lon1, double lat2, double lon2) {

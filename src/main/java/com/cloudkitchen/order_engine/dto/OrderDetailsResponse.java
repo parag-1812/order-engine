@@ -28,6 +28,8 @@ public class OrderDetailsResponse {
     private Integer rating;
     private String review;
     private boolean favorite;
+    private Integer matchScore;
+    private List<String> missingItems;
 
     public OrderDetailsResponse(
             Long orderId,
@@ -51,7 +53,9 @@ public class OrderDetailsResponse {
             String paymentStatus,
             Integer rating,
             String review,
-            boolean favorite
+            boolean favorite,
+            Integer matchScore,
+            List<String> missingItems
     ) {
         this.orderId = orderId;
         this.customerId = customerId;
@@ -75,6 +79,8 @@ public class OrderDetailsResponse {
         this.rating = rating;
         this.review = review;
         this.favorite = favorite;
+        this.matchScore = matchScore;
+        this.missingItems = missingItems;
     }
 
     public Long getOrderId() { return orderId; }
@@ -100,4 +106,6 @@ public class OrderDetailsResponse {
     public Integer getRating() { return rating; }
     public String getReview() { return review; }
     public boolean isFavorite() { return favorite; }
+    public Integer getMatchScore() { return matchScore; }
+    public List<String> getMissingItems() { return missingItems; }
 }

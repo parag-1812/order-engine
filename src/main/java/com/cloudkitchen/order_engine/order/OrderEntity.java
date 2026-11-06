@@ -49,6 +49,11 @@ public class OrderEntity {
     private Double customerLat;
     private Double customerLng;
 
+    // ---- Smart matching: how well the assigned kitchen covered this dish ----
+    private Integer matchScore;       // 0-100 coverage of required ingredients
+    @Column(length = 1000)
+    private String missingItemsCsv;   // catalog items the kitchen had to source
+
     protected OrderEntity() {
 
     }
@@ -155,4 +160,10 @@ public class OrderEntity {
 
     public Double getCustomerLng() { return customerLng; }
     public void setCustomerLng(Double customerLng) { this.customerLng = customerLng; }
+
+    public Integer getMatchScore() { return matchScore; }
+    public void setMatchScore(Integer matchScore) { this.matchScore = matchScore; }
+
+    public String getMissingItemsCsv() { return missingItemsCsv; }
+    public void setMissingItemsCsv(String missingItemsCsv) { this.missingItemsCsv = missingItemsCsv; }
 }
