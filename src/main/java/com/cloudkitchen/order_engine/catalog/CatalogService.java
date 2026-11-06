@@ -54,12 +54,16 @@ public class CatalogService {
     }
 
     /**
-     * Score how well a kitchen covers the required catalog ingredients:
-     * coverage = (required items the kitchen stocks) / (required items), 0-100.
+     * Score how well a kitchen covers a dish:
+     * coverage = (required catalog items the kitchen stocks) / (all required items),
+     * where "all required" includes ingredients we couldn't place on the catalog —
+     * those count honestly as things to source rather than being silently ignored.
      */
-    public Coverage coverageFor(Long kitchenId, List<CatalogIngredientEntity> required) {
-        if (required == null || required.isEmpty()) {
-            // Nothing concrete to match (e.g. AI returned no catalog ingredients) — treat as full.
+    public Coverage coverageFor(Long kitchenId, List<CatalogIngredientEntity> required, List<String> unlisted) {
+        List<String> unmatched = unlisted == null ? List.of() : unlisted;
+        int total = (required == null ? 0 : required.size()) + unmatched.size();
+        if (total == 0) {
+            // Nothing concrete to match (e.g. AI returned no ingredients) — treat as full.
             return new Coverage(100, List.of());
         }
         Set<Long> inStock = stockRepository.findByKitchenIdAndInStockTrue(kitchenId).stream()
@@ -68,14 +72,17 @@ public class CatalogService {
 
         List<String> missing = new ArrayList<>();
         int have = 0;
-        for (CatalogIngredientEntity item : required) {
-            if (inStock.contains(item.getId())) {
-                have++;
-            } else {
-                missing.add(item.getName());
+        if (required != null) {
+            for (CatalogIngredientEntity item : required) {
+                if (inStock.contains(item.getId())) {
+                    have++;
+                } else {
+                    missing.add(item.getName());
+                }
             }
         }
-        int score = (int) Math.round((have * 100.0) / required.size());
+        missing.addAll(unmatched); // not on the catalog → can't be confirmed in stock
+        int score = (int) Math.round((have * 100.0) / total);
         return new Coverage(score, missing);
     }
 

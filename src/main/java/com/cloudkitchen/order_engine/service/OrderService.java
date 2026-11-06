@@ -126,7 +126,9 @@ public class OrderService {
         if (request.getProtein() != null && !request.getProtein().isBlank()) {
             rawRequired.add(request.getProtein());
         }
-        List<CatalogIngredientEntity> required = catalogService.resolve(rawRequired).matched();
+        CatalogService.MatchResult matchResult = catalogService.resolve(rawRequired);
+        List<CatalogIngredientEntity> required = matchResult.matched();
+        List<String> unlisted = matchResult.unmatched();
 
         boolean hasLocation = request.getCustomerLat() != null && request.getCustomerLng() != null;
         double lat = hasLocation ? request.getCustomerLat() : 0;
@@ -138,7 +140,7 @@ public class OrderService {
         CatalogService.Coverage bestCoverage = null;
         double bestDistance = Double.MAX_VALUE;
         for (KitchenEntity k : compatible) {
-            CatalogService.Coverage cov = catalogService.coverageFor(k.getId(), required);
+            CatalogService.Coverage cov = catalogService.coverageFor(k.getId(), required, unlisted);
             double dist = hasLocation
                     ? haversineKm(lat, lng, k.getLatitude(), k.getLongitude())
                     : 0;
