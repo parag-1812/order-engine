@@ -91,18 +91,35 @@ public class CatalogService {
                 .toList();
     }
 
-    /** Replace a kitchen's in-stock set with exactly these catalog ingredient ids. */
+    /**
+     * Make a kitchen's in-stock set exactly match {@code ids}, touching only what
+     * changed. A full wipe-and-reinsert meant dozens of statements per save against
+     * a remote DB (slow enough to time the client out); diffing keeps a typical
+     * toggle down to one or two writes.
+     */
     @Transactional
     public void replaceStock(Long kitchenId, List<Long> ids) {
-        stockRepository.deleteAll(stockRepository.findByKitchenId(kitchenId));
-        if (ids == null) {
-            return;
+        Set<Long> desired = new LinkedHashSet<>(ids == null ? List.of() : ids);
+
+        List<KitchenStockEntity> existing = stockRepository.findByKitchenId(kitchenId);
+        Set<Long> existingIds = existing.stream()
+                .map(KitchenStockEntity::getCatalogIngredientId)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        List<KitchenStockEntity> toDelete = existing.stream()
+                .filter(row -> !desired.contains(row.getCatalogIngredientId()))
+                .toList();
+        if (!toDelete.isEmpty()) {
+            stockRepository.deleteAll(toDelete);
         }
-        Set<Long> distinct = new LinkedHashSet<>(ids);
-        List<KitchenStockEntity> rows = distinct.stream()
+
+        List<KitchenStockEntity> toAdd = desired.stream()
+                .filter(id -> !existingIds.contains(id))
                 .map(id -> new KitchenStockEntity(kitchenId, id, true))
                 .toList();
-        stockRepository.saveAll(rows);
+        if (!toAdd.isEmpty()) {
+            stockRepository.saveAll(toAdd);
+        }
     }
 
     private String normalise(String s) {
