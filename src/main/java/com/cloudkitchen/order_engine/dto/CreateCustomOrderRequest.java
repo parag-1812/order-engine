@@ -20,6 +20,7 @@ public class CreateCustomOrderRequest {
     private int quantity = 1;
     private Double customerLat;
     private Double customerLng;
+    private List<IngredientSpec> ingredientSpecs;
 
     public String getDishType() { return dishType; }
     public void setDishType(String dishType) { this.dishType = dishType; }
@@ -56,4 +57,7 @@ public class CreateCustomOrderRequest {
 
     public Double getCustomerLng() { return customerLng; }
     public void setCustomerLng(Double customerLng) { this.customerLng = customerLng; }
+
+    public List<IngredientSpec> getIngredientSpecs() { return ingredientSpecs; }
+    public void setIngredientSpecs(List<IngredientSpec> ingredientSpecs) { this.ingredientSpecs = ingredientSpecs; }
 }

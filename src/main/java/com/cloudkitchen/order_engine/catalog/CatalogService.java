@@ -64,7 +64,7 @@ public class CatalogService {
         int total = (required == null ? 0 : required.size()) + unmatched.size();
         if (total == 0) {
             // Nothing concrete to match (e.g. AI returned no ingredients) — treat as full.
-            return new Coverage(100, List.of());
+            return new Coverage(100, List.of(), List.of());
         }
         Set<Long> inStock = stockRepository.findByKitchenIdAndInStockTrue(kitchenId).stream()
                 .map(KitchenStockEntity::getCatalogIngredientId)
@@ -83,7 +83,77 @@ public class CatalogService {
         }
         missing.addAll(unmatched); // not on the catalog → can't be confirmed in stock
         int score = (int) Math.round((have * 100.0) / total);
-        return new Coverage(score, missing);
+        return new Coverage(score, missing, List.of());
+    }
+
+    /** Resolve one free-text ingredient name onto the catalog. */
+    public CatalogIngredientEntity resolveOne(String name) {
+        if (name == null || name.isBlank()) {
+            return null;
+        }
+        return findBest(normalise(name), catalogRepository.findAll());
+    }
+
+    /** Resolve AI ingredient specs (name + role + substitute) onto the catalog, once. */
+    public List<ResolvedSpec> resolveSpecs(List<SpecInput> specs) {
+        List<CatalogIngredientEntity> catalog = catalogRepository.findAll();
+        List<ResolvedSpec> out = new ArrayList<>();
+        if (specs == null) {
+            return out;
+        }
+        for (SpecInput s : specs) {
+            if (s == null || s.name() == null || s.name().isBlank()) {
+                continue;
+            }
+            String role = s.role() == null ? "CORE" : s.role().trim().toUpperCase();
+            CatalogIngredientEntity item = findBest(normalise(s.name()), catalog);
+            CatalogIngredientEntity sub = (s.substitute() == null || s.substitute().isBlank())
+                    ? null : findBest(normalise(s.substitute()), catalog);
+            out.add(new ResolvedSpec(
+                    s.name().trim(), role,
+                    item == null ? null : item.getId(),
+                    sub == null ? null : sub.getName(),
+                    sub == null ? null : sub.getId()));
+        }
+        return out;
+    }
+
+    /**
+     * Role-aware coverage. OPTIONAL items don't count (they can be skipped); a
+     * missing SUBSTITUTABLE item still counts as covered if the kitchen stocks its
+     * substitute (recording the swap). Everything else missing is "to source".
+     */
+    public Coverage coverageForSpecs(Long kitchenId, List<ResolvedSpec> specs) {
+        List<ResolvedSpec> required = specs.stream()
+                .filter(s -> !"OPTIONAL".equals(s.role()))
+                .toList();
+        if (required.isEmpty()) {
+            return new Coverage(100, List.of(), List.of());
+        }
+        Set<Long> inStock = stockRepository.findByKitchenIdAndInStockTrue(kitchenId).stream()
+                .map(KitchenStockEntity::getCatalogIngredientId)
+                .collect(Collectors.toSet());
+
+        List<String> missing = new ArrayList<>();
+        List<String> substitutions = new ArrayList<>();
+        int have = 0;
+        for (ResolvedSpec s : required) {
+            if (s.itemId() != null && inStock.contains(s.itemId())) {
+                have++;
+            } else if ("SUBSTITUTABLE".equals(s.role())
+                    && s.substituteId() != null && inStock.contains(s.substituteId())) {
+                have++;
+                substitutions.add(s.substituteName() + " instead of " + s.name());
+            } else {
+                missing.add(s.name());
+            }
+        }
+        int score = (int) Math.round((have * 100.0) / required.size());
+        return new Coverage(score, missing, substitutions);
+    }
+
+    /** AI-provided ingredient classification before catalog resolution. */
+    public record SpecInput(String name, String role, String substitute) {
     }
 
     // ---- Catalog + kitchen-stock management ----
@@ -175,7 +245,16 @@ public class CatalogService {
     public record MatchResult(List<CatalogIngredientEntity> matched, List<String> unmatched) {
     }
 
-    /** A kitchen's coverage of a dish: a 0-100 score and the items it's missing. */
-    public record Coverage(int score, List<String> missing) {
+    /**
+     * A kitchen's coverage of a dish: a 0-100 score, the items it's missing (to
+     * source), and any substitutions it would apply (e.g. "Tofu instead of Paneer").
+     */
+    public record Coverage(int score, List<String> missing, List<String> substitutions) {
+    }
+
+    /** One required ingredient resolved onto the catalog, with its role and substitute. */
+    public record ResolvedSpec(
+            String name, String role, Long itemId,
+            String substituteName, Long substituteId) {
     }
 }

@@ -53,6 +53,8 @@ public class OrderEntity {
     private Integer matchScore;       // 0-100 coverage of required ingredients
     @Column(length = 1000)
     private String missingItemsCsv;   // catalog items the kitchen had to source
+    @Column(length = 1000)
+    private String substitutionsCsv;  // diet-aware swaps the kitchen applies
 
     protected OrderEntity() {
 
@@ -166,4 +168,7 @@ public class OrderEntity {
 
     public String getMissingItemsCsv() { return missingItemsCsv; }
     public void setMissingItemsCsv(String missingItemsCsv) { this.missingItemsCsv = missingItemsCsv; }
+
+    public String getSubstitutionsCsv() { return substitutionsCsv; }
+    public void setSubstitutionsCsv(String substitutionsCsv) { this.substitutionsCsv = substitutionsCsv; }
 }

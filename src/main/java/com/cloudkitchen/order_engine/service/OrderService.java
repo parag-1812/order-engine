@@ -1,6 +1,5 @@
 package com.cloudkitchen.order_engine.service;
 
-import com.cloudkitchen.order_engine.catalog.CatalogIngredientEntity;
 import com.cloudkitchen.order_engine.catalog.CatalogService;
 import com.cloudkitchen.order_engine.dto.*;
 import com.cloudkitchen.order_engine.ingredient.IngredientEntity;
@@ -117,18 +116,11 @@ public class OrderService {
                     "No kitchen available for a " + (isVegetarian ? "veg" : "non-veg") + " dish");
         }
 
-        // What does this dish actually require? Resolve the AI's free-text
-        // ingredients (plus the protein) onto the shared canonical catalog.
-        List<String> rawRequired = new ArrayList<>();
-        if (request.getIngredients() != null) {
-            rawRequired.addAll(request.getIngredients());
-        }
-        if (request.getProtein() != null && !request.getProtein().isBlank()) {
-            rawRequired.add(request.getProtein());
-        }
-        CatalogService.MatchResult matchResult = catalogService.resolve(rawRequired);
-        List<CatalogIngredientEntity> required = matchResult.matched();
-        List<String> unlisted = matchResult.unmatched();
+        // What does this dish actually require? Classify each ingredient by role
+        // (core / substitutable / optional) so routing can be forgiving: optional
+        // items don't block a kitchen, and a valid substitute still counts.
+        List<CatalogService.SpecInput> specInputs = buildSpecInputs(request);
+        List<CatalogService.ResolvedSpec> resolvedSpecs = catalogService.resolveSpecs(specInputs);
 
         boolean hasLocation = request.getCustomerLat() != null && request.getCustomerLng() != null;
         double lat = hasLocation ? request.getCustomerLat() : 0;
@@ -140,7 +132,7 @@ public class OrderService {
         CatalogService.Coverage bestCoverage = null;
         double bestDistance = Double.MAX_VALUE;
         for (KitchenEntity k : compatible) {
-            CatalogService.Coverage cov = catalogService.coverageFor(k.getId(), required, unlisted);
+            CatalogService.Coverage cov = catalogService.coverageForSpecs(k.getId(), resolvedSpecs);
             double dist = hasLocation
                     ? haversineKm(lat, lng, k.getLatitude(), k.getLongitude())
                     : 0;
@@ -185,6 +177,8 @@ public class OrderService {
         orderEntity.setMatchScore(bestCoverage.score());
         orderEntity.setMissingItemsCsv(
                 bestCoverage.missing().isEmpty() ? null : String.join(", ", bestCoverage.missing()));
+        orderEntity.setSubstitutionsCsv(
+                bestCoverage.substitutions().isEmpty() ? null : String.join(", ", bestCoverage.substitutions()));
 
         orderRepository.save(orderEntity);
 
@@ -407,6 +401,34 @@ public class OrderService {
         });
     }
 
+    /**
+     * Build the AI ingredient classification for routing. Uses the AI's
+     * {@code ingredientSpecs} when present; otherwise falls back to treating every
+     * listed ingredient as CORE. The protein is always included as a CORE item.
+     */
+    private List<CatalogService.SpecInput> buildSpecInputs(CreateCustomOrderRequest request) {
+        List<CatalogService.SpecInput> specs = new ArrayList<>();
+        List<IngredientSpec> given = request.getIngredientSpecs();
+        if (given != null && !given.isEmpty()) {
+            for (IngredientSpec s : given) {
+                if (s.getName() == null || s.getName().isBlank()) {
+                    continue;
+                }
+                specs.add(new CatalogService.SpecInput(s.getName(), s.getRole(), s.getSubstitute()));
+            }
+        } else if (request.getIngredients() != null) {
+            for (String ing : request.getIngredients()) {
+                specs.add(new CatalogService.SpecInput(ing, "CORE", null));
+            }
+        }
+        String protein = request.getProtein();
+        if (protein != null && !protein.isBlank()
+                && specs.stream().noneMatch(s -> protein.equalsIgnoreCase(s.name()))) {
+            specs.add(new CatalogService.SpecInput(protein, "CORE", null));
+        }
+        return specs;
+    }
+
     // ---- Pricing for custom dishes (all amounts in Rs.) ----
 
     private double computePrice(String protein, int ingredientCount, String cookingStyle) {
@@ -490,6 +512,12 @@ public class OrderService {
                         .filter(s -> !s.isEmpty())
                         .toList();
 
+        List<String> substitutions = orderEntity.getSubstitutionsCsv() == null ? null
+                : Arrays.stream(orderEntity.getSubstitutionsCsv().split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .toList();
+
         return new OrderDetailsResponse(
                 orderEntity.getId(),
                 orderEntity.getCustomerId(),
@@ -514,7 +542,8 @@ public class OrderService {
                 orderEntity.getReview(),
                 orderEntity.isFavorite(),
                 orderEntity.getMatchScore(),
-                missingItems);
+                missingItems,
+                substitutions);
     }
 
     private double haversineKm(double lat1, double lon1, double lat2, double lon2) {
