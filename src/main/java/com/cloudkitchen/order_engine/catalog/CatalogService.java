@@ -92,6 +92,12 @@ public class CatalogService {
         return catalogRepository.findAll();
     }
 
+    /** Stock a (newly registered) kitchen with the full catalog in one statement. */
+    @Transactional
+    public void stockAllCatalog(Long kitchenId) {
+        stockRepository.stockEntireCatalog(kitchenId);
+    }
+
     public List<Long> inStockIds(Long kitchenId) {
         return stockRepository.findByKitchenIdAndInStockTrue(kitchenId).stream()
                 .map(KitchenStockEntity::getCatalogIngredientId)

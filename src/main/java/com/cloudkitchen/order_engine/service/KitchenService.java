@@ -1,6 +1,5 @@
 package com.cloudkitchen.order_engine.service;
 
-import com.cloudkitchen.order_engine.catalog.CatalogIngredientEntity;
 import com.cloudkitchen.order_engine.catalog.CatalogService;
 import com.cloudkitchen.order_engine.dto.RegisterKitchenRequest;
 import com.cloudkitchen.order_engine.kitchen.KitchenEntity;
@@ -8,7 +7,6 @@ import com.cloudkitchen.order_engine.repository.KitchenRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Optional;
 
 /** Supply-side onboarding: a partner registers and manages their own kitchen. */
@@ -42,11 +40,9 @@ public class KitchenService {
                 new KitchenEntity(request.getName().trim(), request.isVegetarianOnly(), lat, lng, username));
 
         // Start stocked with the whole catalog so the kitchen is immediately
-        // competitive in routing; they can untick what they don't keep.
-        List<Long> allIds = catalogService.getCatalog().stream()
-                .map(CatalogIngredientEntity::getId)
-                .toList();
-        catalogService.replaceStock(saved.getId(), allIds);
+        // competitive in routing; they can untick what they don't keep. Done as a
+        // single bulk INSERT...SELECT so onboarding isn't 45 network round-trips.
+        catalogService.stockAllCatalog(saved.getId());
 
         return saved;
     }
