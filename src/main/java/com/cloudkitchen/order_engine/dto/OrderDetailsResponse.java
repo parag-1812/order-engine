@@ -31,6 +31,8 @@ public class OrderDetailsResponse {
     private Integer matchScore;
     private List<String> missingItems;
     private List<String> substitutions;
+    private String sourcingStatus;
+    private String sourcingSupplierName;
 
     public OrderDetailsResponse(
             Long orderId,
@@ -57,7 +59,9 @@ public class OrderDetailsResponse {
             boolean favorite,
             Integer matchScore,
             List<String> missingItems,
-            List<String> substitutions
+            List<String> substitutions,
+            String sourcingStatus,
+            String sourcingSupplierName
     ) {
         this.orderId = orderId;
         this.customerId = customerId;
@@ -84,6 +88,8 @@ public class OrderDetailsResponse {
         this.matchScore = matchScore;
         this.missingItems = missingItems;
         this.substitutions = substitutions;
+        this.sourcingStatus = sourcingStatus;
+        this.sourcingSupplierName = sourcingSupplierName;
     }
 
     public Long getOrderId() { return orderId; }
@@ -112,4 +118,6 @@ public class OrderDetailsResponse {
     public Integer getMatchScore() { return matchScore; }
     public List<String> getMissingItems() { return missingItems; }
     public List<String> getSubstitutions() { return substitutions; }
+    public String getSourcingStatus() { return sourcingStatus; }
+    public String getSourcingSupplierName() { return sourcingSupplierName; }
 }

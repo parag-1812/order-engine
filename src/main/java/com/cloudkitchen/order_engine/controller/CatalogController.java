@@ -25,7 +25,7 @@ public class CatalogController {
     }
 
     @GetMapping("/ingredients")
-    @PreAuthorize("hasAnyRole('USER','KITCHEN','ADMIN')")
+    @PreAuthorize("hasAnyRole('USER','KITCHEN','ADMIN','SUPPLIER')")
     public ResponseEntity<List<CatalogIngredientResponse>> listIngredients() {
         List<CatalogIngredientResponse> body = catalogService.getCatalog().stream()
                 .map(c -> new CatalogIngredientResponse(

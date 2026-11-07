@@ -1,6 +1,7 @@
 package com.cloudkitchen.order_engine.service;
 
 import com.cloudkitchen.order_engine.catalog.CatalogService;
+import com.cloudkitchen.order_engine.sourcing.SourcingService;
 import com.cloudkitchen.order_engine.dto.*;
 import com.cloudkitchen.order_engine.ingredient.IngredientEntity;
 import com.cloudkitchen.order_engine.inventory.InventoryEntity;
@@ -26,18 +27,21 @@ public class OrderService {
     private final InventoryRepository inventoryRepository;
     private final OrderRepository orderRepository;
     private final CatalogService catalogService;
+    private final SourcingService sourcingService;
 
     public OrderService(
             IngredientRepository ingredientRepository,
             KitchenRepository kitchenRepository,
             InventoryRepository inventoryRepository,
             OrderRepository orderRepository,
-            CatalogService catalogService) {
+            CatalogService catalogService,
+            SourcingService sourcingService) {
         this.ingredientRepository = ingredientRepository;
         this.kitchenRepository = kitchenRepository;
         this.inventoryRepository = inventoryRepository;
         this.orderRepository = orderRepository;
         this.catalogService = catalogService;
+        this.sourcingService = sourcingService;
     }
 
     @Transactional
@@ -181,6 +185,12 @@ public class OrderService {
                 bestCoverage.substitutions().isEmpty() ? null : String.join(", ", bestCoverage.substitutions()));
 
         orderRepository.save(orderEntity);
+
+        // Turn the "to source" gap into an actual sourcing request to the nearest
+        // supplier that stocks the missing items.
+        if (!bestCoverage.missing().isEmpty()) {
+            sourcingService.createForOrder(orderEntity.getId(), kitchen.getId(), bestCoverage.missing());
+        }
 
         return mapToDetailsResponse(orderEntity);
     }
@@ -518,6 +528,11 @@ public class OrderService {
                         .filter(s -> !s.isEmpty())
                         .toList();
 
+        SourcingRequestResponse sourcing = orderEntity.getId() == null ? null
+                : sourcingService.forOrder(orderEntity.getId());
+        String sourcingStatus = sourcing == null ? null : sourcing.status();
+        String sourcingSupplierName = sourcing == null ? null : sourcing.supplierName();
+
         return new OrderDetailsResponse(
                 orderEntity.getId(),
                 orderEntity.getCustomerId(),
@@ -543,7 +558,9 @@ public class OrderService {
                 orderEntity.isFavorite(),
                 orderEntity.getMatchScore(),
                 missingItems,
-                substitutions);
+                substitutions,
+                sourcingStatus,
+                sourcingSupplierName);
     }
 
     private double haversineKm(double lat1, double lon1, double lat2, double lon2) {
