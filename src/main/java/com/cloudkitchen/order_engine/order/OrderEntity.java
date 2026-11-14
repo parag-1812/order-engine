@@ -56,6 +56,10 @@ public class OrderEntity {
     @Column(length = 1000)
     private String substitutionsCsv;  // diet-aware swaps the kitchen applies
 
+    // ---- Economics (Phase D) ----
+    private Double commissionAmount;  // platform's cut
+    private Double kitchenPayout;     // what the kitchen earns (total - commission - sourcing)
+
     protected OrderEntity() {
 
     }
@@ -171,4 +175,10 @@ public class OrderEntity {
 
     public String getSubstitutionsCsv() { return substitutionsCsv; }
     public void setSubstitutionsCsv(String substitutionsCsv) { this.substitutionsCsv = substitutionsCsv; }
+
+    public Double getCommissionAmount() { return commissionAmount; }
+    public void setCommissionAmount(Double commissionAmount) { this.commissionAmount = commissionAmount; }
+
+    public Double getKitchenPayout() { return kitchenPayout; }
+    public void setKitchenPayout(Double kitchenPayout) { this.kitchenPayout = kitchenPayout; }
 }

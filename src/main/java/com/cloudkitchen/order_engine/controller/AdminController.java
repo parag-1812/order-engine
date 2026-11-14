@@ -84,14 +84,19 @@ public class AdminController {
     public Map<String, Object> getStats() {
 
         Map<String, Object> stats = new HashMap<>();
+        List<OrderEntity> orders = orderRepository.findAll();
 
-        stats.put("totalOrders", orderRepository.count());
-        stats.put("totalRevenue",
-                orderRepository.findAll()
-                        .stream()
-                        .mapToDouble(OrderEntity::getTotalPrice)
-                        .sum()
-        );
+        double gmv = orders.stream().mapToDouble(OrderEntity::getTotalPrice).sum();
+        double platformRevenue = orders.stream()
+                .mapToDouble(o -> o.getCommissionAmount() == null ? 0 : o.getCommissionAmount()).sum();
+        double kitchenPayouts = orders.stream()
+                .mapToDouble(o -> o.getKitchenPayout() == null ? 0 : o.getKitchenPayout()).sum();
+
+        stats.put("totalOrders", orders.size());
+        stats.put("totalRevenue", gmv);          // GMV (kept key for backward compat)
+        stats.put("gmv", gmv);
+        stats.put("platformRevenue", platformRevenue);
+        stats.put("kitchenPayouts", kitchenPayouts);
 
         return stats;
     }

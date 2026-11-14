@@ -31,6 +31,9 @@ public class SourcingService {
     private final CatalogService catalogService;
     private final Clock clock = Clock.systemUTC();
 
+    /** What a supplier is paid per sourced ingredient (Rs). */
+    private static final double COST_PER_ITEM = 40.0;
+
     public SourcingService(SourcingRequestRepository sourcingRepository,
                            SupplierRepository supplierRepository,
                            SupplierService supplierService,
@@ -48,9 +51,9 @@ public class SourcingService {
      * supplier covering the most of them, breaking ties by distance to the kitchen.
      */
     @Transactional
-    public void createForOrder(Long orderId, Long kitchenId, List<String> missingItems) {
+    public double createForOrder(Long orderId, Long kitchenId, List<String> missingItems) {
         if (missingItems == null || missingItems.isEmpty()) {
-            return;
+            return 0;
         }
         // Resolve the missing item names to catalog ids where possible.
         List<Long> neededIds = missingItems.stream()
@@ -78,12 +81,15 @@ public class SourcingService {
         }
 
         String itemsCsv = String.join(", ", missingItems);
-        SourcingStatus status = (best != null && bestHave > 0)
-                ? SourcingStatus.REQUESTED : SourcingStatus.UNFULFILLED;
-        Long supplierId = (best != null && bestHave > 0) ? best.getId() : null;
+        boolean fulfilled = best != null && bestHave > 0;
+        SourcingStatus status = fulfilled ? SourcingStatus.REQUESTED : SourcingStatus.UNFULFILLED;
+        Long supplierId = fulfilled ? best.getId() : null;
+        // The supplier is paid only for the items it can actually cover.
+        double cost = fulfilled ? bestHave * COST_PER_ITEM : 0;
 
         sourcingRepository.save(new SourcingRequestEntity(
-                orderId, kitchenId, supplierId, itemsCsv, status, clock.instant()));
+                orderId, kitchenId, supplierId, itemsCsv, status, cost, clock.instant()));
+        return cost;
     }
 
     @Transactional(readOnly = true)

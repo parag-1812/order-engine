@@ -33,6 +33,8 @@ public class OrderDetailsResponse {
     private List<String> substitutions;
     private String sourcingStatus;
     private String sourcingSupplierName;
+    private Double commissionAmount;
+    private Double kitchenPayout;
 
     public OrderDetailsResponse(
             Long orderId,
@@ -61,7 +63,9 @@ public class OrderDetailsResponse {
             List<String> missingItems,
             List<String> substitutions,
             String sourcingStatus,
-            String sourcingSupplierName
+            String sourcingSupplierName,
+            Double commissionAmount,
+            Double kitchenPayout
     ) {
         this.orderId = orderId;
         this.customerId = customerId;
@@ -90,6 +94,8 @@ public class OrderDetailsResponse {
         this.substitutions = substitutions;
         this.sourcingStatus = sourcingStatus;
         this.sourcingSupplierName = sourcingSupplierName;
+        this.commissionAmount = commissionAmount;
+        this.kitchenPayout = kitchenPayout;
     }
 
     public Long getOrderId() { return orderId; }
@@ -120,4 +126,6 @@ public class OrderDetailsResponse {
     public List<String> getSubstitutions() { return substitutions; }
     public String getSourcingStatus() { return sourcingStatus; }
     public String getSourcingSupplierName() { return sourcingSupplierName; }
+    public Double getCommissionAmount() { return commissionAmount; }
+    public Double getKitchenPayout() { return kitchenPayout; }
 }

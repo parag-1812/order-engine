@@ -29,18 +29,21 @@ public class SourcingRequestEntity {
     @Enumerated(EnumType.STRING)
     private SourcingStatus status;
 
+    private double cost;             // what the supplier is paid for this request
+
     private Instant createdAt;
 
     protected SourcingRequestEntity() {
     }
 
     public SourcingRequestEntity(Long orderId, Long kitchenId, Long supplierId,
-                                 String itemsCsv, SourcingStatus status, Instant createdAt) {
+                                 String itemsCsv, SourcingStatus status, double cost, Instant createdAt) {
         this.orderId = orderId;
         this.kitchenId = kitchenId;
         this.supplierId = supplierId;
         this.itemsCsv = itemsCsv;
         this.status = status;
+        this.cost = cost;
         this.createdAt = createdAt;
     }
 
@@ -51,5 +54,6 @@ public class SourcingRequestEntity {
     public String getItemsCsv() { return itemsCsv; }
     public SourcingStatus getStatus() { return status; }
     public void setStatus(SourcingStatus status) { this.status = status; }
+    public double getCost() { return cost; }
     public Instant getCreatedAt() { return createdAt; }
 }

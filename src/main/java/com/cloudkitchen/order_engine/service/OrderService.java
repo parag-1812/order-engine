@@ -22,6 +22,9 @@ import java.util.List;
 @Service
 public class OrderService {
 
+    /** Platform commission as a fraction of the order total. */
+    private static final double COMMISSION_RATE = 0.20;
+
     private final IngredientRepository ingredientRepository;
     private final KitchenRepository kitchenRepository;
     private final InventoryRepository inventoryRepository;
@@ -187,10 +190,17 @@ public class OrderService {
         orderRepository.save(orderEntity);
 
         // Turn the "to source" gap into an actual sourcing request to the nearest
-        // supplier that stocks the missing items.
-        if (!bestCoverage.missing().isEmpty()) {
-            sourcingService.createForOrder(orderEntity.getId(), kitchen.getId(), bestCoverage.missing());
-        }
+        // supplier that stocks the missing items; that supplier cost comes out of
+        // the kitchen's payout.
+        double sourcingCost = bestCoverage.missing().isEmpty() ? 0
+                : sourcingService.createForOrder(orderEntity.getId(), kitchen.getId(), bestCoverage.missing());
+
+        // Economics: platform takes a commission; the kitchen keeps the rest less sourcing.
+        double commission = Math.round(totalPrice * COMMISSION_RATE);
+        double kitchenPayout = Math.max(0, totalPrice - commission - sourcingCost);
+        orderEntity.setCommissionAmount(commission);
+        orderEntity.setKitchenPayout(kitchenPayout);
+        orderRepository.save(orderEntity);
 
         return mapToDetailsResponse(orderEntity);
     }
@@ -322,6 +332,11 @@ public class OrderService {
                 inventory.increaseQuantity(item.getQuantity());
                 inventoryRepository.save(inventory);
             }
+        }
+
+        // Refund a paid order on cancellation.
+        if ("PAID".equalsIgnoreCase(orderEntity.getPaymentStatus())) {
+            orderEntity.setPaymentStatus("REFUNDED");
         }
 
         orderEntity.setStatus(OrderStatus.CANCELLED);
@@ -560,7 +575,9 @@ public class OrderService {
                 missingItems,
                 substitutions,
                 sourcingStatus,
-                sourcingSupplierName);
+                sourcingSupplierName,
+                orderEntity.getCommissionAmount(),
+                orderEntity.getKitchenPayout());
     }
 
     private double haversineKm(double lat1, double lon1, double lat2, double lon2) {
