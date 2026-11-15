@@ -25,6 +25,9 @@ public class OrderService {
     /** Platform commission as a fraction of the order total. */
     private static final double COMMISSION_RATE = 0.20;
 
+    /** Max distance from the customer to a kitchen we'll deliver from (km). */
+    private static final double MAX_DELIVERY_KM = 25.0;
+
     private final IngredientRepository ingredientRepository;
     private final KitchenRepository kitchenRepository;
     private final InventoryRepository inventoryRepository;
@@ -133,12 +136,26 @@ public class OrderService {
         double lat = hasLocation ? request.getCustomerLat() : 0;
         double lng = hasLocation ? request.getCustomerLng() : 0;
 
+        // Serviceability: only kitchens within delivery range are candidates.
+        // If we know where the customer is and nothing is close enough, we don't
+        // deliver there yet (instead of routing to a kitchen hundreds of km away).
+        List<KitchenEntity> candidates = compatible;
+        if (hasLocation) {
+            candidates = compatible.stream()
+                    .filter(k -> haversineKm(lat, lng, k.getLatitude(), k.getLongitude()) <= MAX_DELIVERY_KM)
+                    .toList();
+            if (candidates.isEmpty()) {
+                throw new IllegalStateException(
+                        "We don't deliver to your area yet — no kitchen is within " + (int) MAX_DELIVERY_KM + " km of you.");
+            }
+        }
+
         // Rank kitchens by how much of the dish they can cover, then by distance.
         // Best coverage wins; a tie breaks toward the nearest kitchen.
         KitchenEntity kitchen = null;
         CatalogService.Coverage bestCoverage = null;
         double bestDistance = Double.MAX_VALUE;
-        for (KitchenEntity k : compatible) {
+        for (KitchenEntity k : candidates) {
             CatalogService.Coverage cov = catalogService.coverageForSpecs(k.getId(), resolvedSpecs);
             double dist = hasLocation
                     ? haversineKm(lat, lng, k.getLatitude(), k.getLongitude())
